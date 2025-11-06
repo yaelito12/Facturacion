@@ -1,7 +1,187 @@
 ﻿@page "/"
+@using Facturacion.Data
+@using Microsoft.EntityFrameworkCore
+@inject FacturacionDbContext DbContext
+@rendermode InteractiveServer
 
-<PageTitle>Home</PageTitle>
+<h1>Sistema de Facturación</h1>
 
-<h1>Hello, world!</h1>
+<h2>Nueva Factura</h2>
 
-Welcome to your new app.
+<div>
+    <label>Fecha:</label>
+    <input type="date" @bind="nuevaFactura.Fecha" />
+</div>
+
+<div>
+    <label>Nombre del Cliente:</label>
+    <input type="text" @bind="nuevaFactura.NombreCliente" style="width: 300px;" />
+</div>
+
+<h3>Artículos</h3>
+@foreach (var art in articulosTemp)
+{
+    <div style="margin: 10px 0;">
+        <input type="text" placeholder="Nombre artículo" @bind="art.Nombre" style="width: 200px;" />
+        <input type="number" step="0.01" placeholder="Precio" @bind="art.Precio" style="width: 100px;" />
+        <button @onclick="() => EliminarArticulo(art)">Eliminar</button>
+    </div>
+}
+
+<button @onclick="AgregarArticulo">Agregar Artículo</button>
+
+<div style="margin: 20px 0;">
+    <h4>Total: $@articulosTemp.Sum(a => a.Precio).ToString("F2")</h4>
+</div>
+
+<button @onclick="GuardarFactura">Guardar Factura</button>
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <p style="color: green; font-weight: bold;">@mensaje</p>
+}
+
+<hr />
+
+<h2>Facturas Registradas</h2>
+
+@if (facturas == null)
+{
+    <p>Cargando...</p>
+}
+else if (!facturas.Any())
+{
+    <p>No hay facturas registradas</p>
+}
+else
+{
+    <table border="1" cellpadding="10" cellspacing="0">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Total</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var f in facturas)
+            {
+                <tr>
+                    <td>@f.Id</td>
+                    <td>@f.Fecha.ToShortDateString()</td>
+                    <td>@f.NombreCliente</td>
+                    <td>$@f.Total.ToString("F2")</td>
+                    <td>
+                        <button @onclick="() => VerDetalle(f.Id)">Ver Detalle</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (facturaDetalle != null)
+{
+    <div style="margin-top: 30px; border: 2px solid black; padding: 20px;">
+        <h3>Detalle de Factura #@facturaDetalle.Id</h3>
+        <p><strong>Cliente:</strong> @facturaDetalle.NombreCliente</p>
+        <p><strong>Fecha:</strong> @facturaDetalle.Fecha.ToShortDateString()</p>
+        <h4>Artículos:</h4>
+        <ul>
+            @foreach (var art in facturaDetalle.Articulos)
+            {
+                <li>@art.Nombre - $@art.Precio.ToString("F2")</li>
+            }
+        </ul>
+        <p><strong>Total: $@facturaDetalle.Total.ToString("F2")</strong></p>
+        <button @onclick="CerrarDetalle">Cerrar</button>
+    </div>
+}
+
+@code {
+    private Factura nuevaFactura = new() { Fecha = DateTime.Now };
+    private List<Articulo> articulosTemp = new() { new Articulo() };
+    private List<Factura>? facturas;
+    private Factura? facturaDetalle;
+    private string mensaje = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarFacturas();
+    }
+
+    private async Task CargarFacturas()
+    {
+        facturas = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .OrderByDescending(f => f.Fecha)
+            .ToListAsync();
+    }
+
+    private void AgregarArticulo()
+    {
+        articulosTemp.Add(new Articulo());
+    }
+
+    private void EliminarArticulo(Articulo art)
+    {
+        if (articulosTemp.Count > 1)
+        {
+            articulosTemp.Remove(art);
+        }
+        else
+        {
+            mensaje = "Debe haber al menos un artículo";
+        }
+    }
+
+    private async Task GuardarFactura()
+    {
+        mensaje = "";
+
+        if (string.IsNullOrWhiteSpace(nuevaFactura.NombreCliente))
+        {
+            mensaje = "Debe ingresar el nombre del cliente";
+            return;
+        }
+
+        var articulosValidos = articulosTemp.Where(a =>
+            !string.IsNullOrWhiteSpace(a.Nombre) && a.Precio > 0).ToList();
+
+        if (!articulosValidos.Any())
+        {
+            mensaje = "Debe agregar al menos un artículo válido con nombre y precio";
+            return;
+        }
+
+        var factura = new Factura
+        {
+            Fecha = nuevaFactura.Fecha,
+            NombreCliente = nuevaFactura.NombreCliente,
+            Articulos = articulosValidos
+        };
+
+        DbContext.Facturas.Add(factura);
+        await DbContext.SaveChangesAsync();
+
+        mensaje = "Factura guardada exitosamente";
+        nuevaFactura = new() { Fecha = DateTime.Now };
+        articulosTemp = new() { new Articulo() };
+
+        await CargarFacturas();
+    }
+
+    private async Task VerDetalle(int id)
+    {
+        facturaDetalle = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .FirstOrDefaultAsync(f => f.Id == id);
+    }
+
+    private void CerrarDetalle()
+    {
+        facturaDetalle = null;
+    }
+}
