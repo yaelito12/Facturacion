@@ -18,13 +18,15 @@
     <input type="text" @bind="nuevaFactura.NombreCliente" style="width: 300px;" />
 </div>
 
-<h3>Artículos</h3>
-@foreach (var art in articulosTemp)
+<h3>Artículos (Total: @articulosTemp.Count)</h3>
+@foreach (var art in articulosTemp.Select((a, i) => new { Articulo = a, Index = i }))
 {
     <div style="margin: 10px 0;">
-        <input type="text" placeholder="Nombre artículo" @bind="art.Nombre" style="width: 200px;" />
-        <input type="number" step="0.01" placeholder="Precio" @bind="art.Precio" style="width: 100px;" />
-        <button @onclick="() => EliminarArticulo(art)">Eliminar</button>
+        <h4>Artículo #@(art.Index + 1)</h4>
+        <input type="text" placeholder="Nombre artículo" @bind="art.Articulo.Nombre" style="width: 200px;" />
+        <input type="number" step="0.01" placeholder="Precio" @bind="art.Articulo.Precio" style="width: 100px;" />
+        <button @onclick="() => EliminarArticulo(art.Articulo)">Eliminar</button>
+        <button @onclick="() => LimpiarArticulo(art.Articulo)">Limpiar</button>
     </div>
 }
 
@@ -135,6 +137,12 @@ else
         {
             mensaje = "Debe haber al menos un artículo";
         }
+    }
+
+    private void LimpiarArticulo(Articulo art)
+    {
+        art.Nombre = "";
+        art.Precio = 0;
     }
 
     private async Task GuardarFactura()
