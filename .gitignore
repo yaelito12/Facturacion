@@ -364,5 +364,5 @@ FodyWeavers.xsd
 
 #Archivos de base de datos
 facturacion.db
- facturacion.db-shm
-  facturacion.db-wal
+facturacion.db-shm
+facturacion.db-wal
