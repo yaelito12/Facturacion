@@ -1,10 +1,16 @@
 ﻿@page "/"
 @using Facturacion.Data
 @inject FacturacionDbContext DbContext
-@using Microsoft.EntityFrameworkCore
+@inject NavigationManager Navigation
 @rendermode InteractiveServer
 
 <h1>Sistema de Facturación</h1>
+
+<div style="margin-bottom: 20px;">
+    <button @onclick="IrAFacturas" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+        Ver Facturas Registradas
+    </button>
+</div>
 
 <h2>Nueva Factura</h2>
 
@@ -24,7 +30,7 @@
     <div style="margin: 10px 0;">
         <h4>Artículo #@(art.Index + 1)</h4>
         <input type="text" placeholder="Nombre artículo" @bind="art.Articulo.Nombre" style="width: 200px;" />
-        <input type="number" step="0.01" placeholder="Precio" @bind="art.Articulo.Precio" style="width: 100px;" />
+        <b> Precio:</b> <input type="number" step="0.01" placeholder="Precio" @bind="art.Articulo.Precio" style="width: 100px;" />
         <button @onclick="() => EliminarArticulo(art.Articulo)">Eliminar</button>
         <button @onclick="() => LimpiarArticulo(art.Articulo)">Limpiar</button>
     </div>
@@ -43,84 +49,10 @@
     <p style="color: green; font-weight: bold;">@mensaje</p>
 }
 
-<hr />
-
-<h2>Facturas Registradas</h2>
-
-@if (facturas == null)
-{
-    <p>Cargando...</p>
-}
-else if (!facturas.Any())
-{
-    <p>No hay facturas registradas</p>
-}
-else
-{
-    <table border="1" cellpadding="10" cellspacing="0">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Fecha</th>
-                <th>Cliente</th>
-                <th>Total</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var f in facturas)
-            {
-                <tr>
-                    <td>@f.Id</td>
-                    <td>@f.Fecha.ToShortDateString()</td>
-                    <td>@f.NombreCliente</td>
-                    <td>$@f.Total.ToString("F2")</td>
-                    <td>
-                        <button @onclick="() => VerDetalle(f.Id)">Ver Detalle</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-
-@if (facturaDetalle != null)
-{
-    <div style="margin-top: 30px; border: 2px solid black; padding: 20px;">
-        <h3>Detalle de Factura #@facturaDetalle.Id</h3>
-        <p><strong>Cliente:</strong> @facturaDetalle.NombreCliente</p>
-        <p><strong>Fecha:</strong> @facturaDetalle.Fecha.ToShortDateString()</p>
-        <h4>Artículos:</h4>
-        <ul>
-            @foreach (var art in facturaDetalle.Articulos)
-            {
-                <li>@art.Nombre - $@art.Precio.ToString("F2")</li>
-            }
-        </ul>
-        <p><strong>Total: $@facturaDetalle.Total.ToString("F2")</strong></p>
-        <button @onclick="CerrarDetalle">Cerrar</button>
-    </div>
-}
-
 @code {
     private Factura nuevaFactura = new() { Fecha = DateTime.Now };
     private List<Articulo> articulosTemp = new() { new Articulo() };
-    private List<Factura>? facturas;
-    private Factura? facturaDetalle;
     private string mensaje = "";
-
-    protected override async Task OnInitializedAsync()
-    {
-        await CargarFacturas();
-    }
-
-    private async Task CargarFacturas()
-    {
-        facturas = await DbContext.Facturas
-            .Include(f => f.Articulos)
-            .OrderByDescending(f => f.Fecha)
-            .ToListAsync();
-    }
 
     private void AgregarArticulo()
     {
@@ -177,19 +109,10 @@ else
         mensaje = "Factura guardada exitosamente";
         nuevaFactura = new() { Fecha = DateTime.Now };
         articulosTemp = new() { new Articulo() };
-
-        await CargarFacturas();
     }
 
-    private async Task VerDetalle(int id)
+    private void IrAFacturas()
     {
-        facturaDetalle = await DbContext.Facturas
-            .Include(f => f.Articulos)
-            .FirstOrDefaultAsync(f => f.Id == id);
-    }
-
-    private void CerrarDetalle()
-    {
-        facturaDetalle = null;
+        Navigation.NavigateTo("/facturas");
     }
 }

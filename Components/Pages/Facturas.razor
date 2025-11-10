@@ -1,0 +1,80 @@
+﻿@page "/facturas"
+@using Facturacion.Data
+@using Microsoft.EntityFrameworkCore
+@inject FacturacionDbContext DbContext
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<h1>Facturas Registradas</h1>
+
+<div style="margin-bottom: 20px;">
+    <button @onclick="IrAHome" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+        ← Volver a Nueva Factura
+    </button>
+</div>
+
+@if (facturas == null)
+{
+    <p>Cargando...</p>
+}
+else if (!facturas.Any())
+{
+    <p>No hay facturas registradas</p>
+}
+else
+{
+    <table border="1" cellpadding="10" cellspacing="0" style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background-color: #f0f0f0;">
+                <th>ID</th>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Total</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var f in facturas)
+            {
+                <tr>
+                    <td>@f.Id</td>
+                    <td>@f.Fecha.ToShortDateString()</td>
+                    <td>@f.NombreCliente</td>
+                    <td>$@f.Total.ToString("F2")</td>
+                    <td>
+                        <button @onclick="() => VerDetalle(f.Id)" style="padding: 5px 15px; background-color: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                            Ver Detalle
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Factura>? facturas;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarFacturas();
+    }
+
+    private async Task CargarFacturas()
+    {
+        facturas = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .OrderByDescending(f => f.Fecha)
+            .ToListAsync();
+    }
+
+    private void VerDetalle(int id)
+    {
+        Navigation.NavigateTo($"/factura/{id}");
+    }
+
+    private void IrAHome()
+    {
+        Navigation.NavigateTo("/");
+    }
+}
