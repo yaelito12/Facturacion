@@ -8,9 +8,7 @@
 <h1>Facturas Registradas</h1>
 
 <div style="margin-bottom: 20px;">
-    <button @onclick="IrAHome" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
-        ← Volver a Nueva Factura
-    </button>
+    <button @onclick="IrAHome">← Volver a Nueva Factura</button>
 </div>
 
 @if (facturas == null)
@@ -23,9 +21,9 @@ else if (!facturas.Any())
 }
 else
 {
-    <table border="1" cellpadding="10" cellspacing="0" style="width: 100%; border-collapse: collapse;">
+    <table border="1" cellpadding="10" cellspacing="0">
         <thead>
-            <tr style="background-color: #f0f0f0;">
+            <tr>
                 <th>ID</th>
                 <th>Fecha</th>
                 <th>Cliente</th>
@@ -42,9 +40,7 @@ else
                     <td>@f.NombreCliente</td>
                     <td>$@f.Total.ToString("F2")</td>
                     <td>
-                        <button @onclick="() => VerDetalle(f.Id)" style="padding: 5px 15px; background-color: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer;">
-                            Ver Detalle
-                        </button>
+                        <button @onclick="() => VerDetalle(f.Id)">Ver Detalle</button>
                     </td>
                 </tr>
             }

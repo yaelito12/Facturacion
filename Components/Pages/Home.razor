@@ -6,11 +6,6 @@
 
 <h1>Sistema de Facturación</h1>
 
-<div style="margin-bottom: 20px;">
-    <button @onclick="IrAFacturas" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
-        Ver Facturas Registradas
-    </button>
-</div>
 
 <h2>Nueva Factura</h2>
 
@@ -44,9 +39,15 @@
 
 <button @onclick="GuardarFactura">Guardar Factura</button>
 
+<br>
+<div style="margin-bottom: 20px;">
+    <button @onclick="IrAFacturas">Ver Facturas Registradas</button>
+</div>
+
+
 @if (!string.IsNullOrEmpty(mensaje))
 {
-    <p style="color: green; font-weight: bold;">@mensaje</p>
+    <p>@mensaje</p>
 }
 
 @code {

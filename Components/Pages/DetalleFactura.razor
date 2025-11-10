@@ -1,0 +1,89 @@
+﻿@page "/factura/{Id:int}"
+@using Facturacion.Data
+@using Microsoft.EntityFrameworkCore
+@inject FacturacionDbContext DbContext
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<h1>Detalle de Factura</h1>
+
+<div style="margin-bottom: 20px;">
+    <button @onclick="IrAFacturas">← Volver a Facturas</button>
+    <button @onclick="IrAHome">Ir a Nueva Factura</button>
+</div>
+
+@if (factura == null)
+{
+    <p>Cargando detalle...</p>
+}
+else
+{
+    <div style="border: 2px solid black; padding: 20px;">
+        <h2>Factura #@factura.Id</h2>
+
+        <div>
+            <p><strong>Cliente:</strong> @factura.NombreCliente</p>
+            <p><strong>Fecha:</strong> @factura.Fecha.ToShortDateString()</p>
+        </div>
+
+        <h3>Artículos:</h3>
+
+        @if (factura.Articulos != null && factura.Articulos.Any())
+        {
+            <table border="1" cellpadding="10" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Artículo</th>
+                        <th>Precio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var art in factura.Articulos)
+                    {
+                        <tr>
+                            <td>@art.Nombre</td>
+                            <td>$@art.Precio.ToString("F2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>No hay artículos en esta factura.</p>
+        }
+
+        <div style="margin-top: 30px;">
+            <h3>Total: $@factura.Total.ToString("F2")</h3>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Factura? factura;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarFactura();
+    }
+
+    private async Task CargarFactura()
+    {
+        factura = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .FirstOrDefaultAsync(f => f.Id == Id);
+    }
+
+    private void IrAFacturas()
+    {
+        Navigation.NavigateTo("/facturas");
+    }
+
+    private void IrAHome()
+    {
+        Navigation.NavigateTo("/");
+    }
+}
