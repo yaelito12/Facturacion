@@ -6,6 +6,9 @@
 
 <h1>Sistema de Facturación</h1>
 
+<div style="margin-bottom: 20px;">
+    <button @onclick="IrAFacturas">Ver Facturas Registradas</button>
+</div>
 
 <h2>Nueva Factura</h2>
 
@@ -38,12 +41,6 @@
 </div>
 
 <button @onclick="GuardarFactura">Guardar Factura</button>
-
-<br>
-<div style="margin-bottom: 20px;">
-    <button @onclick="IrAFacturas">Ver Facturas Registradas</button>
-</div>
-
 
 @if (!string.IsNullOrEmpty(mensaje))
 {

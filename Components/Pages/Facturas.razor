@@ -41,6 +41,7 @@ else
                     <td>$@f.Total.ToString("F2")</td>
                     <td>
                         <button @onclick="() => VerDetalle(f.Id)">Ver Detalle</button>
+                        <button @onclick="() => EliminarFactura(f.Id)">Eliminar</button>
                     </td>
                 </tr>
             }
@@ -50,6 +51,7 @@ else
 
 @code {
     private List<Factura>? facturas;
+    private string mensaje = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -67,6 +69,20 @@ else
     private void VerDetalle(int id)
     {
         Navigation.NavigateTo($"/factura/{id}");
+    }
+
+    private async Task EliminarFactura(int id)
+    {
+        var factura = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .FirstOrDefaultAsync(f => f.Id == id);
+
+        if (factura != null)
+        {
+            DbContext.Facturas.Remove(factura);
+            await DbContext.SaveChangesAsync();
+            await CargarFacturas();
+        }
     }
 
     private void IrAHome()
