@@ -10,6 +10,7 @@
 <div style="margin-bottom: 20px;">
     <button @onclick="IrAFacturas">← Volver a Facturas</button>
     <button @onclick="IrAHome">Ir a Nueva Factura</button>
+    <button @onclick="HabilitarEdicion">Editar Factura</button>
 </div>
 
 @if (factura == null)
@@ -22,13 +23,27 @@ else
         <h2>Factura #@factura.Id</h2>
 
         <div>
-            <p><strong>Cliente:</strong> @factura.NombreCliente</p>
-            <p><strong>Fecha:</strong> @factura.Fecha.ToShortDateString()</p>
+            <p><strong>Cliente:</strong></p>
+            @if (modoEdicion)
+            {
+                <input type="text" @bind="factura.NombreCliente" style="width: 300px;" />
+            }
+            else
+            {
+                <p>@factura.NombreCliente</p>
+            }
+
+            <p><strong>Fecha:</strong></p>
+            @if (modoEdicion)
+            {
+                <input type="date" @bind="factura.Fecha" />
+            }
+            else
+            {
+                <p>@factura.Fecha.ToShortDateString()</p>
+            }
         </div>
 
-        <div> <button> Editar factura</button>
-            
-        </div>
         <h3>Artículos:</h3>
 
         @if (factura.Articulos != null && factura.Articulos.Any())
@@ -38,18 +53,51 @@ else
                     <tr>
                         <th>Artículo</th>
                         <th>Precio</th>
+                        @if (modoEdicion)
+                        {
+                            <th>Acciones</th>
+                        }
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var art in factura.Articulos)
                     {
                         <tr>
-                            <td>@art.Nombre</td>
-                            <td>$@art.Precio.ToString("F2")</td>
+                            <td>
+                                @if (modoEdicion)
+                                {
+                                    <input type="text" @bind="art.Nombre" style="width: 200px;" />
+                                }
+                                else
+                                {
+                                    @art.Nombre
+                                }
+                            </td>
+                            <td>
+                                @if (modoEdicion)
+                                {
+                                    <input type="number" step="0.01" @bind="art.Precio" style="width: 100px;" />
+                                }
+                                else
+                                {
+                                    <text>$@art.Precio.ToString("F2")</text>
+                                }
+                            </td>
+                            @if (modoEdicion)
+                            {
+                                <td>
+                                    <button @onclick="() => EliminarArticulo(art)">Eliminar</button>
+                                </td>
+                            }
                         </tr>
                     }
                 </tbody>
             </table>
+
+            @if (modoEdicion)
+            {
+                <button @onclick="AgregarArticulo" style="margin-top: 10px;">Agregar Artículo</button>
+            }
         }
         else
         {
@@ -59,6 +107,19 @@ else
         <div style="margin-top: 30px;">
             <h3>Total: $@factura.Total.ToString("F2")</h3>
         </div>
+
+        @if (modoEdicion)
+        {
+            <div style="margin-top: 20px;">
+                <button @onclick="GuardarCambios">Guardar Cambios</button>
+                <button @onclick="CancelarEdicion">Cancelar</button>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(mensaje))
+        {
+            <p>@mensaje</p>
+        }
     </div>
 }
 
@@ -67,6 +128,8 @@ else
     public int Id { get; set; }
 
     private Factura? factura;
+    private bool modoEdicion = false;
+    private string mensaje = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -78,6 +141,67 @@ else
         factura = await DbContext.Facturas
             .Include(f => f.Articulos)
             .FirstOrDefaultAsync(f => f.Id == Id);
+    }
+
+    private void HabilitarEdicion()
+    {
+        modoEdicion = true;
+        mensaje = "";
+    }
+
+    private void CancelarEdicion()
+    {
+        modoEdicion = false;
+        mensaje = "";
+        // Recargar la factura para descartar cambios
+        Task.Run(async () => await CargarFactura()).Wait();
+    }
+
+    private async Task GuardarCambios()
+    {
+        mensaje = "";
+
+        if (string.IsNullOrWhiteSpace(factura.NombreCliente))
+        {
+            mensaje = "Debe ingresar el nombre del cliente";
+            return;
+        }
+
+        var articulosValidos = factura.Articulos.Where(a =>
+            !string.IsNullOrWhiteSpace(a.Nombre) && a.Precio > 0).ToList();
+
+        if (!articulosValidos.Any())
+        {
+            mensaje = "Debe haber al menos un artículo válido";
+            return;
+        }
+
+        // Remover artículos inválidos
+        factura.Articulos = articulosValidos;
+
+        DbContext.Facturas.Update(factura);
+        await DbContext.SaveChangesAsync();
+
+        mensaje = "Factura actualizada exitosamente";
+        modoEdicion = false;
+        await CargarFactura();
+    }
+
+    private void AgregarArticulo()
+    {
+        factura.Articulos.Add(new Articulo { FacturaId = factura.Id });
+    }
+
+    private void EliminarArticulo(Articulo art)
+    {
+        if (factura.Articulos.Count > 1)
+        {
+            factura.Articulos.Remove(art);
+        }
+        else
+        {
+            mensaje = "Debe haber al menos un artículo";
+        }
     }
 
     private void IrAFacturas()
