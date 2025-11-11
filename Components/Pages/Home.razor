@@ -6,9 +6,6 @@
 
 <h1>Sistema de Facturación</h1>
 
-<div style="margin-bottom: 20px;">
-    <button @onclick="IrAFacturas">Ver Facturas Registradas</button>
-</div>
 
 <h2>Nueva Factura</h2>
 
@@ -44,8 +41,17 @@
 
 @if (!string.IsNullOrEmpty(mensaje))
 {
-    <p>@mensaje</p>
+    <p>@mensaje</p> 
+
+
+
 }
+
+
+
+<div style="margin-bottom: 20px;">
+    <button @onclick="IrAFacturas">Ver Facturas Registradas</button>
+</div>
 
 @code {
     private Factura nuevaFactura = new() { Fecha = DateTime.Now };
