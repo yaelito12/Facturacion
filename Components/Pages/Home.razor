@@ -3,22 +3,17 @@
 @inject FacturacionDbContext DbContext
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
-
 <h1>Sistema de Facturación</h1>
-
-
 <h2>Nueva Factura</h2>
-
 <div>
     <label>Fecha:</label>
-    <input type="date" @bind="nuevaFactura.Fecha" />
+    <input type="date" @bind="nuevaFactura.Fecha" min="@fechaMinima.ToString("yyyy-MM-dd")" max="@fechaMaxima.ToString("yyyy-MM-dd")" />
+    <small style="color: gray;"> (Rango permitido: últimos 30 días a 7 días futuros)</small>
 </div>
-
 <div>
     <label>Nombre del Cliente:</label>
     <input type="text" @bind="nuevaFactura.NombreCliente" style="width: 300px;" />
 </div>
-
 <h3>Artículos (Total: @articulosTemp.Count)</h3>
 @foreach (var art in articulosTemp.Select((a, i) => new { Articulo = a, Index = i }))
 {
@@ -30,29 +25,26 @@
         <button @onclick="() => LimpiarArticulo(art.Articulo)">Limpiar</button>
     </div>
 }
-
 <button @onclick="AgregarArticulo">Agregar Artículo</button>
-
 <div style="margin: 20px 0;">
     <h4>Total: $@articulosTemp.Sum(a => a.Precio).ToString("F2")</h4>
 </div>
 @if (!string.IsNullOrEmpty(mensaje))
 {
-    <p>@mensaje</p>
-
-
-
+    <p style="color: @(mensaje.Contains("exitosamente") ? "green" : "red"); font-weight: bold;">@mensaje</p>
 }
 <button @onclick="GuardarFactura">Guardar Factura</button>
-
 <div style="margin-bottom: 20px;">
     <button @onclick="IrAFacturas">Ver Facturas Registradas</button>
 </div>
-
 @code {
     private Factura nuevaFactura = new() { Fecha = DateTime.Now };
     private List<Articulo> articulosTemp = new() { new Articulo() };
     private string mensaje = "";
+
+    // Definir rangos de fechas permitidas
+    private DateTime fechaMinima = DateTime.Now.AddDays(-30); // 30 días atrás
+    private DateTime fechaMaxima = DateTime.Now.AddDays(7);   // 7 días adelante
 
     private void AgregarArticulo()
     {
@@ -80,6 +72,12 @@
     private async Task GuardarFactura()
     {
         mensaje = "";
+
+        if (nuevaFactura.Fecha < fechaMinima || nuevaFactura.Fecha > fechaMaxima)
+        {
+            mensaje = $"La fecha debe estar entre {fechaMinima:dd/MM/yyyy} y {fechaMaxima:dd/MM/yyyy}";
+            return;
+        }
 
         if (string.IsNullOrWhiteSpace(nuevaFactura.NombreCliente))
         {
