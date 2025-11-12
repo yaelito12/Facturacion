@@ -36,18 +36,14 @@
 <div style="margin: 20px 0;">
     <h4>Total: $@articulosTemp.Sum(a => a.Precio).ToString("F2")</h4>
 </div>
-
-<button @onclick="GuardarFactura">Guardar Factura</button>
-
 @if (!string.IsNullOrEmpty(mensaje))
 {
-    <p>@mensaje</p> 
+    <p>@mensaje</p>
 
 
 
 }
-
-
+<button @onclick="GuardarFactura">Guardar Factura</button>
 
 <div style="margin-bottom: 20px;">
     <button @onclick="IrAFacturas">Ver Facturas Registradas</button>
@@ -71,7 +67,7 @@
         }
         else
         {
-            mensaje = "Debe haber al menos un artículo";
+            mensaje = "No se puede eliminar articulo 1, debe de tener al menos un artículo para facturar";
         }
     }
 

@@ -153,7 +153,6 @@ else
     {
         modoEdicion = false;
         mensaje = "";
-        // Recargar la factura para descartar cambios
         Task.Run(async () => await CargarFactura()).Wait();
     }
 
@@ -176,7 +175,6 @@ else
             return;
         }
 
-        // Remover artículos inválidos
         factura.Articulos = articulosValidos;
 
         DbContext.Facturas.Update(factura);
