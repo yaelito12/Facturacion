@@ -1,5 +1,25 @@
-﻿<h3>Reportes</h3>
+﻿@page "/reportes"
+@using Facturacion.Data
+@using Microsoft.EntityFrameworkCore
+@inject FacturacionDbContext DbContext
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<h1>Reportes para el SAT</h1>
+
+<div style="margin-bottom: 20px;">
+    <button @onclick="IrAHome">← Volver a Nueva Factura</button>
+    <button @onclick="IrAFacturas">Ver Facturas</button>
+</div>
 
 @code {
+    private void IrAHome()
+    {
+        Navigation.NavigateTo("/");
+    }
 
+    private void IrAFacturas()
+    {
+        Navigation.NavigateTo("/facturas");
+    }
 }
