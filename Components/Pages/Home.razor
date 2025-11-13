@@ -7,8 +7,8 @@
 <h2>Nueva Factura</h2>
 <div>
     <label>Fecha:</label>
-    <input type="date" @bind="nuevaFactura.Fecha" min="@fechaMinima.ToString("yyyy-MM-dd")" max="@fechaMaxima.ToString("yyyy-MM-dd")" />
-    <small style="color: gray;"> (Rango permitido: últimos 30 días a 7 días futuros)</small>
+    <input type="date" @bind="nuevaFactura.Fecha" min="@fechaMinima.ToString("yyyy-MM-dd")"  />
+   
 </div>
 <div>
     <label>Nombre del Cliente:</label>
@@ -43,8 +43,8 @@
     private string mensaje = "";
 
     // Definir rangos de fechas permitidas
-    private DateTime fechaMinima = DateTime.Now.AddDays(-30); // 30 días atrás
-    private DateTime fechaMaxima = DateTime.Now.AddDays(7);   // 7 días adelante
+    private DateTime fechaMinima = DateTime.Now.AddDays(-300); 
+
 
     private void AgregarArticulo()
     {
@@ -73,12 +73,7 @@
     {
         mensaje = "";
 
-        if (nuevaFactura.Fecha < fechaMinima || nuevaFactura.Fecha > fechaMaxima)
-        {
-            mensaje = $"La fecha debe estar entre {fechaMinima:dd/MM/yyyy} y {fechaMaxima:dd/MM/yyyy}";
-            return;
-        }
-
+    
         if (string.IsNullOrWhiteSpace(nuevaFactura.NombreCliente))
         {
             mensaje = "Debe ingresar el nombre del cliente";
