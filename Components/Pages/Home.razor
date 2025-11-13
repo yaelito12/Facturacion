@@ -1,26 +1,29 @@
 ﻿@page "/"
 @using Facturacion.Data
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @inject FacturacionDbContext DbContext
 @inject NavigationManager Navigation
+@inject ProtectedLocalStorage LocalStorage
 @rendermode InteractiveServer
+
 <h1>Sistema de Facturación</h1>
 <h2>Nueva Factura</h2>
 <div>
     <label>Fecha:</label>
-    <input type="date" @bind="nuevaFactura.Fecha" min="@fechaMinima.ToString("yyyy-MM-dd")"  />
-   
+    <input type="date" @bind="nuevaFactura.Fecha" @bind:after="GuardarEnStorage" min="@fechaMinima.ToString("yyyy-MM-dd")" />
+
 </div>
 <div>
     <label>Nombre del Cliente:</label>
-    <input type="text" @bind="nuevaFactura.NombreCliente" style="width: 300px;" />
+    <input type="text" @bind="nuevaFactura.NombreCliente" @bind:after="GuardarEnStorage" style="width: 300px;" />
 </div>
 <h3>Artículos (Total: @articulosTemp.Count)</h3>
 @foreach (var art in articulosTemp.Select((a, i) => new { Articulo = a, Index = i }))
 {
     <div style="margin: 10px 0;">
         <h4>Artículo #@(art.Index + 1)</h4>
-        <input type="text" placeholder="Nombre artículo" @bind="art.Articulo.Nombre" style="width: 200px;" />
-        <b> Precio:</b> <input type="number" step="0.01" placeholder="Precio" @bind="art.Articulo.Precio" style="width: 100px;" />
+        <input type="text" placeholder="Nombre artículo" @bind="art.Articulo.Nombre" @bind:after="GuardarEnStorage" style="width: 200px;" />
+        <b> Precio:</b> <input type="number" step="0.01" placeholder="Precio" @bind="art.Articulo.Precio" @bind:after="GuardarEnStorage" style="width: 100px;" />
         <button @onclick="() => EliminarArticulo(art.Articulo)">Eliminar</button>
         <button @onclick="() => LimpiarArticulo(art.Articulo)">Limpiar</button>
     </div>
@@ -37,25 +40,109 @@
 <div style="margin-bottom: 20px;">
     <button @onclick="IrAFacturas">Ver Facturas Registradas</button>
 </div>
+<div style="margin-bottom: 20px;">
+    <button @onclick="IrAReportes">Reportes SAT</button>
+</div>
+
 @code {
     private Factura nuevaFactura = new() { Fecha = DateTime.Now };
     private List<Articulo> articulosTemp = new() { new Articulo() };
     private string mensaje = "";
+    private DateTime fechaMinima = DateTime.Now.AddDays(-300);
+    private bool cargaInicial = true;
 
-    // Definir rangos de fechas permitidas
-    private DateTime fechaMinima = DateTime.Now.AddDays(-300); 
-
-
-    private void AgregarArticulo()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        articulosTemp.Add(new Articulo());
+        if (firstRender)
+        {
+            await CargarDesdeStorage();
+            cargaInicial = false;
+            StateHasChanged();
+        }
     }
 
-    private void EliminarArticulo(Articulo art)
+    private async Task CargarDesdeStorage()
+    {
+        try
+        {
+            var fechaGuardada = await LocalStorage.GetAsync<DateTime>("factura_fecha");
+            var clienteGuardado = await LocalStorage.GetAsync<string>("factura_cliente");
+            var articulosGuardados = await LocalStorage.GetAsync<List<ArticuloDto>>("factura_articulos");
+
+            if (fechaGuardada.Success && fechaGuardada.Value != default)
+            {
+                nuevaFactura.Fecha = fechaGuardada.Value;
+            }
+
+            if (clienteGuardado.Success && !string.IsNullOrWhiteSpace(clienteGuardado.Value))
+            {
+                nuevaFactura.NombreCliente = clienteGuardado.Value;
+            }
+
+            if (articulosGuardados.Success && articulosGuardados.Value?.Any() == true)
+            {
+                articulosTemp = articulosGuardados.Value.Select(dto => new Articulo
+                {
+                    Nombre = dto.Nombre,
+                    Precio = dto.Precio
+                }).ToList();
+            }
+        }
+        catch
+        {
+     
+        }
+    }
+
+    private async Task GuardarEnStorage()
+    {
+        if (cargaInicial) return;
+
+        try
+        {
+            await LocalStorage.SetAsync("factura_fecha", nuevaFactura.Fecha);
+            await LocalStorage.SetAsync("factura_cliente", nuevaFactura.NombreCliente ?? "");
+
+            var articulosDto = articulosTemp.Select(a => new ArticuloDto
+            {
+                Nombre = a.Nombre ?? "",
+                Precio = a.Precio
+            }).ToList();
+
+            await LocalStorage.SetAsync("factura_articulos", articulosDto);
+        }
+        catch
+        {
+            // Ignorar errores de guardado
+        }
+    }
+
+    private async Task LimpiarStorage()
+    {
+        try
+        {
+            await LocalStorage.DeleteAsync("factura_fecha");
+            await LocalStorage.DeleteAsync("factura_cliente");
+            await LocalStorage.DeleteAsync("factura_articulos");
+        }
+        catch
+        {
+            // Ignorar errores
+        }
+    }
+
+    private async Task AgregarArticulo()
+    {
+        articulosTemp.Add(new Articulo());
+        await GuardarEnStorage();
+    }
+
+    private async Task EliminarArticulo(Articulo art)
     {
         if (articulosTemp.Count > 1)
         {
             articulosTemp.Remove(art);
+            await GuardarEnStorage();
         }
         else
         {
@@ -63,43 +150,41 @@
         }
     }
 
-    private void LimpiarArticulo(Articulo art)
+    private async Task LimpiarArticulo(Articulo art)
     {
         art.Nombre = "";
         art.Precio = 0;
+        await GuardarEnStorage();
     }
 
     private async Task GuardarFactura()
     {
         mensaje = "";
 
-    
         if (string.IsNullOrWhiteSpace(nuevaFactura.NombreCliente))
         {
             mensaje = "Debe ingresar el nombre del cliente";
             return;
         }
-
         var articulosValidos = articulosTemp.Where(a =>
             !string.IsNullOrWhiteSpace(a.Nombre) && a.Precio > 0).ToList();
-
         if (!articulosValidos.Any())
         {
             mensaje = "Debe agregar al menos un artículo válido con nombre y precio";
             return;
         }
-
         var factura = new Factura
         {
             Fecha = nuevaFactura.Fecha,
             NombreCliente = nuevaFactura.NombreCliente,
             Articulos = articulosValidos
         };
-
         DbContext.Facturas.Add(factura);
         await DbContext.SaveChangesAsync();
-
         mensaje = "Factura guardada exitosamente";
+
+        await LimpiarStorage();
+
         nuevaFactura = new() { Fecha = DateTime.Now };
         articulosTemp = new() { new Articulo() };
     }
@@ -107,5 +192,16 @@
     private void IrAFacturas()
     {
         Navigation.NavigateTo("/facturas");
+    }
+
+    private void IrAReportes()
+    {
+        Navigation.NavigateTo("/reportes");
+    }
+
+    private class ArticuloDto
+    {
+        public string Nombre { get; set; } = "";
+        public decimal Precio { get; set; }
     }
 }
