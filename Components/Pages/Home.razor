@@ -37,6 +37,9 @@
 <div style="margin-bottom: 20px;">
     <button @onclick="IrAFacturas">Ver Facturas Registradas</button>
 </div>
+<div style="margin-bottom: 20px;">
+    <button @onclick="IrAReportes">Reportes SAT</button>
+</div>
 @code {
     private Factura nuevaFactura = new() { Fecha = DateTime.Now };
     private List<Articulo> articulosTemp = new() { new Articulo() };
@@ -107,5 +110,9 @@
     private void IrAFacturas()
     {
         Navigation.NavigateTo("/facturas");
+    }
+    private void IrAReportes()
+    {
+        Navigation.NavigateTo("/reportess");
     }
 }
