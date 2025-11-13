@@ -12,6 +12,110 @@
     <button @onclick="IrAFacturas">Ver Facturas</button>
 </div>
 
+<div style="margin-bottom: 30px; padding: 20px; border: 1px solid #ccc;">
+    <h3>Seleccionar Año</h3>
+    <select @bind="añoSeleccionado" @bind:after="CargarReporte" style="font-size: 16px; padding: 5px;">
+        @foreach (var año in añosDisponibles)
+        {
+            <option value="@año">@año</option>
+        }
+    </select>
+    <button @onclick="CargarReporte" style="margin-left: 10px;">Mostrar Reporte</button>
+</div>
+
+@code {
+    private int añoSeleccionado;
+    private List<int> añosDisponibles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAñosDisponibles();
+        añoSeleccionado = DateTime.Now.Year;
+    }
+
+    private async Task CargarAñosDisponibles()
+    {
+        var facturas = await DbContext.Facturas.ToListAsync();
+
+        if (facturas.Any())
+        {
+            var añoMin = facturas.Min(f => f.Fecha.Year);
+            var añoMax = facturas.Max(f => f.Fecha.Year);
+
+            añosDisponibles = Enumerable.Range(añoMin, añoMax - añoMin + 1)
+                .OrderByDescending(a => a)
+                .ToList();
+        }
+        else
+        {
+            var añoActual = DateTime.Now.Year;
+            añosDisponibles = Enumerable.Range(añoActual - 4, 5)
+                .OrderByDescending(a => a)
+                .ToList();
+        }
+    }
+}
+@code {
+    private string ObtenerNombreMes(int mes)
+    {
+        return mes switch
+        {
+            1 => "Enero",
+            2 => "Febrero",
+            3 => "Marzo",
+            4 => "Abril",
+            5 => "Mayo",
+            6 => "Junio",
+            7 => "Julio",
+            8 => "Agosto",
+            9 => "Septiembre",
+            10 => "Octubre",
+            11 => "Noviembre",
+            12 => "Diciembre",
+            _ => "Desconocido"
+        };
+    }
+
+    public class ReporteMensual
+    {
+        public int NumeroMes { get; set; }
+        public string NombreMes { get; set; } = "";
+        public int CantidadFacturas { get; set; }
+        public decimal TotalMes { get; set; }
+    }
+}
+@code {
+    private List<ReporteMensual> reporteMensual = new();
+    private bool reporteCargado = false;
+
+    private async Task CargarReporte()
+    {
+        reporteMensual.Clear();
+
+        var facturas = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .Where(f => f.Fecha.Year == añoSeleccionado)
+            .ToListAsync();
+
+        var facturasPorMes = facturas
+            .GroupBy(f => f.Fecha.Month)
+            .OrderBy(g => g.Key)
+            .ToList();
+
+        foreach (var grupo in facturasPorMes)
+        {
+            reporteMensual.Add(new ReporteMensual
+            {
+                NumeroMes = grupo.Key,
+                NombreMes = ObtenerNombreMes(grupo.Key),
+                CantidadFacturas = grupo.Count(),
+                TotalMes = grupo.Sum(f => f.Total)
+            });
+        }
+
+        reporteCargado = true;
+    }
+}
 @code {
     private void IrAHome()
     {
