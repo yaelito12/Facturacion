@@ -1,0 +1,186 @@
+[33mcommit 3acbec3a8b2afca929c611d524ff5e3e22ae1ead[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32meditarFactura[m[33m)[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Fri Nov 14 22:34:39 2025 -0700
+
+    - Agregar detección de cambios en cliente, fecha y artículos
+
+[33mcommit 2f233779295e4e4332fc2b58b7eba012aab2d7d6[m[33m ([m[1;32mReportes[m[33m, [m[1;32mPaginas[m[33m)[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Fri Nov 14 20:39:48 2025 -0700
+
+    EMPAREJAR PAGINA
+
+[33mcommit 70dd6374ffe53c90f1585ed115953e8fb5ab0912[m
+Merge: 9019e92 78675c3
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 13 14:26:01 2025 -0700
+
+    Ahora se guardan las cosas en home
+
+[33mcommit 9019e920aa00f809db196b2f25ed05b8fa860db8[m[33m ([m[1;31morigin/Paginas[m[33m)[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 13 13:55:01 2025 -0700
+
+    Agregue en la pagina Home, que se guardaran los datos que se estaban ingresando por si sale de la pagina actual o cierra el programa
+
+[33mcommit 78675c393aa329751427254012fbf0a1cd6fdc5c[m[33m ([m[1;32mDes[m[33m)[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 13 11:14:50 2025 -0700
+
+    Agregue boton ir a Reportes
+
+[33mcommit 6a228e0b667e9e58002d4c888e6a8e9f79335b4c[m[33m ([m[1;31morigin/Reportes[m[33m)[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 13 11:03:02 2025 -0700
+
+    Agregue boton para ir a reportes en la pagina Home
+
+[33mcommit 43784eb61ff2c04a4f2823694930dab7bbaa72e5[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 13 10:55:49 2025 -0700
+
+    implemente carga y agrupación de reporte mensual, agregue tabla de reporte anual con totales por mes,  agregue vista detallada de facturas por mes seleccionado,  limpiar detalle de mes al cambiar de año seleccionado
+
+[33mcommit 76fe44028588099d6e6b0c4879ba1b1a04c6f414[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 13 08:30:00 2025 -0700
+
+    agregue clase ReporteMensual y función de nombres de meses
+
+[33mcommit 7f8f3433cbcf07552d80a32bbb4d403bb9fa8d7e[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 13 08:15:52 2025 -0700
+
+    Aguregue botones para navegar entre paginas
+
+[33mcommit 2dca2a89327a0b69bd2048b2403dbbcc7afe05b7[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 13 08:11:05 2025 -0700
+
+    Se creo el archivo razor para la pagina de Reportes
+
+[33mcommit 898411939c24e0eff321da35b03c99285cbd9439[m[33m ([m[1;31morigin/editarFactura[m[33m, [m[1;31morigin/Des[m[33m)[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Wed Nov 12 21:41:41 2025 -0700
+
+    Quite la restriccion de la fecha mejor
+
+[33mcommit 2cb5319e1a03f1be9dc05a8f321acfa066020109[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Wed Nov 12 13:37:29 2025 -0700
+
+    Agregar restriccion al momento de seleccionar fecha para factura, ni muy antigua ni muy futura
+
+[33mcommit 1994e9bb022d3235c08e4bea2c72893d1c216312[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Wed Nov 12 13:18:24 2025 -0700
+
+    Modificacion al momento de eliminar factura, no se puede gaurdar factura sin datis
+
+[33mcommit aa8784bbff9d2253d9d56b0916fcdadfb434c10b[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Tue Nov 11 11:31:20 2025 -0700
+
+    Se habilito el boton de editar factura que peremite la edicion de los cambos en la factura, boton de cancelar para cancelar y boton de guardar cambios
+
+[33mcommit 312f03ce13160a02b3041d35cac1d3580abbf2fb[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Tue Nov 11 11:18:22 2025 -0700
+
+    se agrego boton a la interfaz sin funcionamiento
+
+[33mcommit aa8343e7f6832d487ef5e8c8ca52ef8717f39e83[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Tue Nov 11 11:09:23 2025 -0700
+
+    Cambio de posicion en la pagina del boton de ver facuras
+
+[33mcommit 772d43bea8b052fad3dfbc2e0fe8ef3e99398c94[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Mon Nov 10 14:37:05 2025 -0700
+
+    Se agrego boton e eliminar factura en Pagina facturas
+
+[33mcommit 984041190468d7904e9ad0744eb830909279b60f[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Mon Nov 10 14:25:21 2025 -0700
+
+    Creacion de pagina detalle factura, se agregaron botones funcionales, ver detalle de factura, ver facturas, donde se envia a una pagina diferente
+
+[33mcommit ed351d3c473fbdecae35fbb4721a96202d1aeef7[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Mon Nov 10 14:04:04 2025 -0700
+
+    Creacion de pagina facturas, para separar la lista de facturas de Home
+
+[33mcommit ef9661a407c6692a82d3ce8098a21f688b2b39fa[m[33m ([m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmaster[m[33m)[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Mon Nov 10 13:41:20 2025 -0700
+
+    Ignorar base de datos SQLite
+
+[33mcommit 9bcbb2596562f83b335d4b7e33ce18b413113c48[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Mon Nov 10 13:34:28 2025 -0700
+
+    Aqui se corrigio un error en la base de datos, ignore archivos de base de datos
+
+[33mcommit e6da077d5cc8fb6411739301c234ca23ad1d2efa[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Mon Nov 10 13:29:22 2025 -0700
+
+    Aqui se corrigio un error en la base de datos,
+
+[33mcommit b36826d712b6687016da0ebdf3cb5d31778ca003[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Fri Nov 7 19:54:51 2025 -0700
+
+    agregar boton de limpiar espacios, y contador para contar los articulos
+
+[33mcommit fa7ac19179cd624afc69eec9023f45cd54c5b2e9[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 6 14:09:31 2025 -0700
+
+    Correccion de errores, en database y version de sdk
+
+[33mcommit 445d865d4af7637f26d0cae226aa142c46e581dc[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 6 13:59:40 2025 -0700
+
+    página de gestión de facturas con funcionalidad
+
+[33mcommit 59447cd273e263226414d3c5b8fdca7c064758f7[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 6 13:57:48 2025 -0700
+
+    cONFIGURACION DE BASE DE DATOS Y SERVICIOS
+
+[33mcommit d4c1daeb102c5ceff626f02c744d94fa768eab57[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 6 13:56:55 2025 -0700
+
+    AGREGAR ENTIDADES EN BASE DE DATOS
+
+[33mcommit 0fde68d77dd0df6037a006a6548ce9720a3ca256[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 6 13:56:20 2025 -0700
+
+    Creacion de carpeta data y fACTURACION dB
+
+[33mcommit ee399975f7cd5919c73c76406d19ecbf5f85734b[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 6 13:53:59 2025 -0700
+
+    Agregar dependencias de la base de datos
+
+[33mcommit 0ed51e046c86b7d759a4987395433967c10e9f43[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 6 13:45:38 2025 -0700
+
+    Agregar archivos de proyecto.
+
+[33mcommit c5e3826ea45bdd6a1407573d8120498b1fa1d0e9[m
+Author: yaelito12 <yaelacostatorres@gmail.com>
+Date:   Thu Nov 6 13:45:36 2025 -0700
+
+    Agregar .gitattributes y .gitignore.
