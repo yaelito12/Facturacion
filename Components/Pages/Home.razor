@@ -43,10 +43,6 @@
 <div style="margin-bottom: 20px;">
     <button @onclick="IrAReportes">Reportes SAT</button>
 </div>
-<<<<<<< HEAD
-
-=======
->>>>>>> Reportes
 @code {
     private Factura nuevaFactura = new() { Fecha = DateTime.Now };
     private List<Articulo> articulosTemp = new() { new Articulo() };
@@ -196,15 +192,11 @@
     {
         Navigation.NavigateTo("/facturas");
     }
-<<<<<<< HEAD
-
-=======
->>>>>>> Reportes
     private void IrAReportes()
     {
         Navigation.NavigateTo("/reportes");
     }
-<<<<<<< HEAD
+
 
     private class ArticuloDto
     {
@@ -212,6 +204,6 @@
         public decimal Precio { get; set; }
     }
 }
-=======
+
 }
->>>>>>> Reportes
+
