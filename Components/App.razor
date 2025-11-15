@@ -11,4 +11,97 @@
     <Routes />
     <script src="_framework/blazor.web.js"></script>
 </body>
+<script>
+    // Deshabilitar teclas Alt (izquierda y derecha)
+    document.addEventListener('keydown', function(event) {
+        // Alt izquierda: keyCode 18 o key "Alt"
+        // Alt derecha: keyCode 18 o key "Alt" (también keyCode 225 en algunos navegadores)
+        if (event.key === 'Alt' || event.keyCode === 18 || event.keyCode === 225) {
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        }
+
+        // También prevenir combinaciones con Alt
+        if (event.altKey) {
+            event.preventDefault();
+            event.stopPropagation();
+            return false;
+        }
+    }, true); // true = capture phase, para interceptar antes que otros handlers
+
+    console.log('Teclas Alt deshabilitadas');
+</script>
+<!-- Agrega este script en App.razor, _Host.cshtml o wwwroot/index.html -->
+
+<script>
+    (function() {
+        // Bloquear Ctrl+L y F6 (enfoque en barra de direcciones)
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+L o Cmd+L (enfoque en barra de URL)
+            if ((e.ctrlKey || e.metaKey) && e.keyCode === 76) {
+                e.preventDefault();
+                e.stopPropagation();
+                alert('La barra de direcciones está bloqueada');
+                return false;
+            }
+
+            // F6 (cambiar entre elementos del navegador)
+            if (e.keyCode === 116) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+
+            // Alt+D (enfoque en barra de direcciones)
+            if (e.altKey && e.keyCode === 68) {
+                e.preventDefault();
+                e.stopPropagation();
+                alert('La barra de direcciones está bloqueada');
+                return false;
+            }
+
+            // Bloquear Alt completamente (previene Alt+D y otras combinaciones)
+            if (e.altKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+
+            // Ctrl+K (barra de búsqueda en algunos navegadores)
+            if ((e.ctrlKey || e.metaKey) && e.keyCode === 75) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+
+            // F5 y Ctrl+R (recargar)
+            if (e.keyCode === 116 || ((e.ctrlKey || e.metaKey) && e.keyCode === 82)) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+
+            // Backspace fuera de inputs (navegación atrás)
+            if (e.keyCode === 8 && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                return false;
+            }
+        }, true);
+
+        // Detectar cuando el usuario hace clic en la barra de direcciones
+        // (esto es limitado, pero podemos detectar blur)
+        let ultimaRuta = window.location.href;
+
+       
+
+        // Actualizar la última ruta válida solo cuando sea navegación autorizada
+        window.actualizarRutaValida = function() {
+            ultimaRuta = window.location.href;
+        };
+
+        console.log('Barra de direcciones bloqueada');
+    })();
+</script>
+
 </html>

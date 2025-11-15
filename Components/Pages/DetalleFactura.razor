@@ -131,7 +131,7 @@ else
     public int Id { get; set; }
 
     private Factura? factura;
-    private Factura? facturaOriginal; // Copia del estado original
+    private Factura? facturaOriginal; 
     private bool modoEdicion = false;
     private string mensaje = "";
     private bool navegacionConfirmada = false;
@@ -177,7 +177,7 @@ else
             };
         }
     }
-
+    //comentario para commit incompleto
     private bool TieneCambios()
     {
         if (!modoEdicion || factura == null || facturaOriginal == null)
@@ -330,11 +330,11 @@ else
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        // Si ya estamos procesando una navegación, ignorar
+     
         if (procesandoNavegacion)
             return;
 
-        // Solo interceptar si no es la URL actual
+
         if (e.Location.Contains($"/factura/{Id}"))
             return;
 
@@ -342,10 +342,9 @@ else
         {
             procesandoNavegacion = true;
 
-            // Prevenir la navegación
             Navigation.NavigateTo($"/factura/{Id}", false);
 
-            // Mostrar confirmación del navegador
+
             bool confirmar = await JS.InvokeAsync<bool>("confirm",
                 "Tienes cambios sin guardar. ¿Deseas salir sin guardar?");
 
