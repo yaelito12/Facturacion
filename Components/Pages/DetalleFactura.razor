@@ -1,9 +1,12 @@
 ﻿@page "/factura/{Id:int}"
 @using Facturacion.Data
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.JSInterop
 @inject FacturacionDbContext DbContext
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @rendermode InteractiveServer
+@implements IDisposable
 
 <h1>Detalle de Factura</h1>
 
@@ -26,7 +29,7 @@ else
             <p><strong>Cliente:</strong></p>
             @if (modoEdicion)
             {
-                <input type="text" @bind="factura.NombreCliente" style="width: 300px;" />
+                <input type="text" @bind="factura.NombreCliente" @bind:event="oninput" style="width: 300px;" />
             }
             else
             {
@@ -36,7 +39,7 @@ else
             <p><strong>Fecha:</strong></p>
             @if (modoEdicion)
             {
-                <input type="date" @bind="factura.Fecha" />
+                <input type="date" @bind="factura.Fecha" @bind:event="oninput" />
             }
             else
             {
@@ -66,7 +69,7 @@ else
                             <td>
                                 @if (modoEdicion)
                                 {
-                                    <input type="text" @bind="art.Nombre" style="width: 200px;" />
+                                    <input type="text" @bind="art.Nombre" @bind:event="oninput" style="width: 200px;" />
                                 }
                                 else
                                 {
@@ -76,7 +79,7 @@ else
                             <td>
                                 @if (modoEdicion)
                                 {
-                                    <input type="number" step="0.01" @bind="art.Precio" style="width: 100px;" />
+                                    <input type="number" step="0.01" @bind="art.Precio" @bind:event="oninput" style="width: 100px;" />
                                 }
                                 else
                                 {
@@ -128,32 +131,103 @@ else
     public int Id { get; set; }
 
     private Factura? factura;
+    private Factura? facturaOriginal; // Copia del estado original
     private bool modoEdicion = false;
     private string mensaje = "";
+    private bool navegacionConfirmada = false;
 
     protected override async Task OnInitializedAsync()
     {
         await CargarFactura();
+        Navigation.LocationChanged += OnLocationChanged;
     }
 
     private async Task CargarFactura()
     {
         factura = await DbContext.Facturas
             .Include(f => f.Articulos)
+            .AsNoTracking()
             .FirstOrDefaultAsync(f => f.Id == Id);
     }
 
-    private void HabilitarEdicion()
+    private async void HabilitarEdicion()
     {
         modoEdicion = true;
         mensaje = "";
+        GuardarEstadoOriginal();
+        await HabilitarInterceptorNavegacion();
     }
 
-    private void CancelarEdicion()
+    private void GuardarEstadoOriginal()
+    {
+        if (factura != null)
+        {
+            facturaOriginal = new Factura
+            {
+                Id = factura.Id,
+                NombreCliente = factura.NombreCliente,
+                Fecha = factura.Fecha,
+                Articulos = factura.Articulos.Select(a => new Articulo
+                {
+                    Id = a.Id,
+                    Nombre = a.Nombre,
+                    Precio = a.Precio,
+                    FacturaId = a.FacturaId
+                }).ToList()
+            };
+        }
+    }
+
+    private bool TieneCambios()
+    {
+        if (!modoEdicion || factura == null || facturaOriginal == null)
+            return false;
+
+        if (factura.NombreCliente != facturaOriginal.NombreCliente)
+            return true;
+
+        if (factura.Fecha != facturaOriginal.Fecha)
+            return true;
+
+        if (factura.Articulos.Count != facturaOriginal.Articulos.Count)
+            return true;
+
+        for (int i = 0; i < factura.Articulos.Count; i++)
+        {
+            var artActual = factura.Articulos[i];
+            var artOriginal = facturaOriginal.Articulos.FirstOrDefault(a => a.Id == artActual.Id);
+
+            if (artOriginal == null)
+                return true;
+
+            if (artActual.Nombre != artOriginal.Nombre || artActual.Precio != artOriginal.Precio)
+                return true;
+        }
+
+        return false;
+    }
+
+    private async void CancelarEdicion()
+    {
+        if (TieneCambios())
+        {
+            bool confirmar = await JS.InvokeAsync<bool>("confirm",
+                "Tienes cambios sin guardar. ¿Deseas descartar los cambios?");
+
+            if (!confirmar)
+                return;
+        }
+
+        await FinalizarCancelacion();
+    }
+
+    private async Task FinalizarCancelacion()
     {
         modoEdicion = false;
         mensaje = "";
-        Task.Run(async () => await CargarFactura()).Wait();
+        await DeshabilitarInterceptorNavegacion();
+        await CargarFactura();
+        StateHasChanged();
     }
 
     private async Task GuardarCambios()
@@ -177,12 +251,30 @@ else
 
         factura.Articulos = articulosValidos;
 
-        DbContext.Facturas.Update(factura);
-        await DbContext.SaveChangesAsync();
+        var facturaDb = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .FirstOrDefaultAsync(f => f.Id == Id);
+
+        if (facturaDb != null)
+        {
+            facturaDb.NombreCliente = factura.NombreCliente;
+            facturaDb.Fecha = factura.Fecha;
+
+            DbContext.Articulos.RemoveRange(facturaDb.Articulos);
+            facturaDb.Articulos = factura.Articulos.Select(a => new Articulo
+            {
+                Nombre = a.Nombre,
+                Precio = a.Precio,
+                FacturaId = factura.Id
+            }).ToList();
+
+            await DbContext.SaveChangesAsync();
+        }
 
         mensaje = "Factura actualizada exitosamente";
         modoEdicion = false;
         await CargarFactura();
+        await DeshabilitarInterceptorNavegacion();
     }
 
     private void AgregarArticulo()
@@ -202,13 +294,99 @@ else
         }
     }
 
-    private void IrAFacturas()
+    private async void IrAFacturas()
     {
+        if (TieneCambios())
+        {
+            bool confirmar = await JS.InvokeAsync<bool>("confirm",
+                "Tienes cambios sin guardar. ¿Deseas salir sin guardar?");
+
+            if (!confirmar)
+                return;
+
+            await DeshabilitarInterceptorNavegacion();
+        }
+
         Navigation.NavigateTo("/facturas");
     }
 
-    private void IrAHome()
+    private async void IrAHome()
     {
+        if (TieneCambios())
+        {
+            bool confirmar = await JS.InvokeAsync<bool>("confirm",
+                "Tienes cambios sin guardar. ¿Deseas salir sin guardar?");
+
+            if (!confirmar)
+                return;
+
+            await DeshabilitarInterceptorNavegacion();
+        }
+
         Navigation.NavigateTo("/");
+    }
+
+    private bool procesandoNavegacion = false;
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        // Si ya estamos procesando una navegación, ignorar
+        if (procesandoNavegacion)
+            return;
+
+        // Solo interceptar si no es la URL actual
+        if (e.Location.Contains($"/factura/{Id}"))
+            return;
+
+        if (modoEdicion && TieneCambios() && !navegacionConfirmada)
+        {
+            procesandoNavegacion = true;
+
+            // Prevenir la navegación
+            Navigation.NavigateTo($"/factura/{Id}", false);
+
+            // Mostrar confirmación del navegador
+            bool confirmar = await JS.InvokeAsync<bool>("confirm",
+                "Tienes cambios sin guardar. ¿Deseas salir sin guardar?");
+
+            if (confirmar)
+            {
+                navegacionConfirmada = true;
+                await DeshabilitarInterceptorNavegacion();
+                Navigation.NavigateTo(e.Location);
+            }
+
+            procesandoNavegacion = false;
+        }
+    }
+
+    private async Task HabilitarInterceptorNavegacion()
+    {
+        navegacionConfirmada = false;
+        await JS.InvokeVoidAsync("eval", @"
+            window.beforeUnloadHandler = function(e) {
+                e.preventDefault();
+                e.returnValue = 'Tienes cambios sin guardar. ¿Deseas salir sin guardar?';
+                return 'Tienes cambios sin guardar. ¿Deseas salir sin guardar?';
+            };
+            window.addEventListener('beforeunload', window.beforeUnloadHandler);
+        ");
+    }
+
+    private async Task DeshabilitarInterceptorNavegacion()
+    {
+        navegacionConfirmada = true;
+        await JS.InvokeVoidAsync("eval", @"
+            if (window.beforeUnloadHandler) {
+                window.removeEventListener('beforeunload', window.beforeUnloadHandler);
+                window.beforeUnloadHandler = null;
+            }
+        ");
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+        _ = DeshabilitarInterceptorNavegacion();
     }
 }
