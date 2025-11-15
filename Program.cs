@@ -1,8 +1,11 @@
 using Facturacion.Components;
 using Facturacion.Data;
+using Facturacion.Services; // ? Agregar este using
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddScoped<FacturaNavigationService>();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

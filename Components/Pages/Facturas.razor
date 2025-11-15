@@ -1,8 +1,10 @@
 ﻿@page "/facturas"
 @using Facturacion.Data
+@using Facturacion.Services
 @using Microsoft.EntityFrameworkCore
 @inject FacturacionDbContext DbContext
 @inject NavigationManager Navigation
+@inject FacturaNavigationService NavService
 @rendermode InteractiveServer
 
 <h1>Facturas Registradas</h1>
@@ -68,7 +70,11 @@ else
 
     private void VerDetalle(int id)
     {
-        Navigation.NavigateTo($"/factura/{id}");
+        // Generar token de navegación autorizada
+        var token = NavService.GenerarTokenNavegacion(id);
+
+        // Navegar con el token en el query string
+        Navigation.NavigateTo($"/factura/{id}?token={token}");
     }
 
     private async Task EliminarFactura(int id)

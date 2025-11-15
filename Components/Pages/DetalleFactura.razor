@@ -1,145 +1,168 @@
 ﻿@page "/factura/{Id:int}"
 @using Facturacion.Data
+@using Facturacion.Services
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.JSInterop
 @inject FacturacionDbContext DbContext
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject FacturaNavigationService NavService
 @rendermode InteractiveServer
 @implements IDisposable
-
 <h1>Detalle de Factura</h1>
 
-<div style="margin-bottom: 20px;">
-    <button @onclick="IrAFacturas">← Volver a Facturas</button>
-    <button @onclick="IrAHome">Ir a Nueva Factura</button>
-    <button @onclick="HabilitarEdicion">Editar Factura</button>
-</div>
-
-@if (factura == null)
+@if (!accesoAutorizado)
 {
-    <p>Cargando detalle...</p>
+    <div style="border: 2px solid red; padding: 20px; background-color: #ffe6e6;">
+        <h2>⚠️ Acceso No Autorizado</h2>
+        <p>No puedes acceder directamente a esta página mediante URL.</p>
+        <p>Por favor, accede a través de la lista de facturas.</p>
+        <button @onclick='() => Navigation.NavigateTo("/facturas")'>Ir a Facturas</button>
+    </div>
 }
 else
 {
-    <div style="border: 2px solid black; padding: 20px;">
-        <h2>Factura #@factura.Id</h2>
+    <div style="margin-bottom: 20px;">
+        <button @onclick="IrAFacturas">← Volver a Facturas</button>
+        <button @onclick="IrAHome">Ir a Nueva Factura</button>
+        <button @onclick="HabilitarEdicion">Editar Factura</button>
+    </div>
 
-        <div>
-            <p><strong>Cliente:</strong></p>
-            @if (modoEdicion)
-            {
-                <input type="text" @bind="factura.NombreCliente" @bind:event="oninput" style="width: 300px;" />
-            }
-            else
-            {
-                <p>@factura.NombreCliente</p>
-            }
+    @if (factura == null)
+    {
+        <p>Cargando detalle...</p>
+    }
+    else
+    {
+        <div style="border: 2px solid black; padding: 20px;">
+            <h2>Factura #@factura.Id</h2>
 
-            <p><strong>Fecha:</strong></p>
-            @if (modoEdicion)
-            {
-                <input type="date" @bind="factura.Fecha" @bind:event="oninput" />
-            }
-            else
-            {
-                <p>@factura.Fecha.ToShortDateString()</p>
-            }
-        </div>
+            <div>
+                <p><strong>Cliente:</strong></p>
+                @if (modoEdicion)
+                {
+                    <input type="text" @bind="factura.NombreCliente" @bind:event="oninput" style="width: 300px;" />
+                }
+                else
+                {
+                    <p>@factura.NombreCliente</p>
+                }
 
-        <h3>Artículos:</h3>
+                <p><strong>Fecha:</strong></p>
+                @if (modoEdicion)
+                {
+                    <input type="date" @bind="factura.Fecha" @bind:event="oninput" />
+                }
+                else
+                {
+                    <p>@factura.Fecha.ToShortDateString()</p>
+                }
+            </div>
 
-        @if (factura.Articulos != null && factura.Articulos.Any())
-        {
-            <table border="1" cellpadding="10" cellspacing="0">
-                <thead>
-                    <tr>
-                        <th>Artículo</th>
-                        <th>Precio</th>
-                        @if (modoEdicion)
-                        {
-                            <th>Acciones</th>
-                        }
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var art in factura.Articulos)
-                    {
+            <h3>Artículos:</h3>
+
+            @if (factura.Articulos != null && factura.Articulos.Any())
+            {
+                <table border="1" cellpadding="10" cellspacing="0">
+                    <thead>
                         <tr>
-                            <td>
-                                @if (modoEdicion)
-                                {
-                                    <input type="text" @bind="art.Nombre" @bind:event="oninput" style="width: 200px;" />
-                                }
-                                else
-                                {
-                                    @art.Nombre
-                                }
-                            </td>
-                            <td>
-                                @if (modoEdicion)
-                                {
-                                    <input type="number" step="0.01" @bind="art.Precio" @bind:event="oninput" style="width: 100px;" />
-                                }
-                                else
-                                {
-                                    <text>$@art.Precio.ToString("F2")</text>
-                                }
-                            </td>
+                            <th>Artículo</th>
+                            <th>Precio</th>
                             @if (modoEdicion)
                             {
-                                <td>
-                                    <button @onclick="() => EliminarArticulo(art)">Eliminar</button>
-                                </td>
+                                <th>Acciones</th>
                             }
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var art in factura.Articulos)
+                        {
+                            <tr>
+                                <td>
+                                    @if (modoEdicion)
+                                    {
+                                        <input type="text" @bind="art.Nombre" @bind:event="oninput" style="width: 200px;" />
+                                    }
+                                    else
+                                    {
+                                        @art.Nombre
+                                    }
+                                </td>
+                                <td>
+                                    @if (modoEdicion)
+                                    {
+                                        <input type="number" step="0.01" @bind="art.Precio" @bind:event="oninput" style="width: 100px;" />
+                                    }
+                                    else
+                                    {
+                                        <text>$@art.Precio.ToString("F2")</text>
+                                    }
+                                </td>
+                                @if (modoEdicion)
+                                {
+                                    <td>
+                                        <button @onclick="() => EliminarArticulo(art)">Eliminar</button>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                @if (modoEdicion)
+                {
+                    <button @onclick="AgregarArticulo" style="margin-top: 10px;">Agregar Artículo</button>
+                }
+            }
+            else
+            {
+                <p>No hay artículos en esta factura.</p>
+            }
+
+            <div style="margin-top: 30px;">
+                <h3>Total: $@factura.Total.ToString("F2")</h3>
+            </div>
 
             @if (modoEdicion)
             {
-                <button @onclick="AgregarArticulo" style="margin-top: 10px;">Agregar Artículo</button>
+                <div style="margin-top: 20px;">
+                    <button @onclick="GuardarCambios">Guardar Cambios</button>
+                    <button @onclick="CancelarEdicion">Cancelar</button>
+                </div>
             }
-        }
-        else
-        {
-            <p>No hay artículos en esta factura.</p>
-        }
 
-        <div style="margin-top: 30px;">
-            <h3>Total: $@factura.Total.ToString("F2")</h3>
+            @if (!string.IsNullOrEmpty(mensaje))
+            {
+                <p>@mensaje</p>
+            }
         </div>
-
-        @if (modoEdicion)
-        {
-            <div style="margin-top: 20px;">
-                <button @onclick="GuardarCambios">Guardar Cambios</button>
-                <button @onclick="CancelarEdicion">Cancelar</button>
-            </div>
-        }
-
-        @if (!string.IsNullOrEmpty(mensaje))
-        {
-            <p>@mensaje</p>
-        }
-    </div>
+    }
 }
 
 @code {
     [Parameter]
     public int Id { get; set; }
 
+    [SupplyParameterFromQuery(Name = "token")]
+    public string? Token { get; set; }
+
     private Factura? factura;
     private Factura? facturaOriginal; 
     private bool modoEdicion = false;
     private string mensaje = "";
     private bool navegacionConfirmada = false;
+    private bool accesoAutorizado = false;
 
     protected override async Task OnInitializedAsync()
     {
-        await CargarFactura();
-        Navigation.LocationChanged += OnLocationChanged;
+        // Validar acceso mediante token
+        accesoAutorizado = NavService.ValidarYConsumir(Id, Token);
+        
+        if (accesoAutorizado)
+        {
+            await CargarFactura();
+            Navigation.LocationChanged += OnLocationChanged;
+        }
     }
 
     private async Task CargarFactura()
@@ -177,7 +200,7 @@ else
             };
         }
     }
-    //comentario para commit incompleto
+
     private bool TieneCambios()
     {
         if (!modoEdicion || factura == null || facturaOriginal == null)
@@ -330,10 +353,8 @@ else
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-     
         if (procesandoNavegacion)
             return;
-
 
         if (e.Location.Contains($"/factura/{Id}"))
             return;
@@ -341,9 +362,7 @@ else
         if (modoEdicion && TieneCambios() && !navegacionConfirmada)
         {
             procesandoNavegacion = true;
-
             Navigation.NavigateTo($"/factura/{Id}", false);
-
 
             bool confirmar = await JS.InvokeAsync<bool>("confirm",
                 "Tienes cambios sin guardar. ¿Deseas salir sin guardar?");
