@@ -1,10 +1,11 @@
 using Facturacion.Components;
 using Facturacion.Data;
-using Facturacion.Services; // ? Agregar este using
+using Facturacion.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Registrar el servicio como Scoped (por sesión de usuario)
 builder.Services.AddScoped<FacturaNavigationService>();
 
 // Add services to the container.

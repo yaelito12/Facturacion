@@ -2,10 +2,13 @@
 @using Facturacion.Data
 @using Facturacion.Services
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.JSInterop
 @inject FacturacionDbContext DbContext
 @inject NavigationManager Navigation
 @inject FacturaNavigationService NavService
+@inject IJSRuntime JS
 @rendermode InteractiveServer
+@implements IDisposable
 
 <h1>Facturas Registradas</h1>
 
@@ -60,6 +63,14 @@ else
         await CargarFacturas();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await BloquearBotonesNavegador();
+        }
+    }
+
     private async Task CargarFacturas()
     {
         facturas = await DbContext.Facturas
@@ -68,12 +79,15 @@ else
             .ToListAsync();
     }
 
-    private void VerDetalle(int id)
+    private async Task VerDetalle(int id)
     {
         // Generar token de navegación autorizada
         var token = NavService.GenerarTokenNavegacion(id);
 
-        // Navegar con el token en el query string
+        // Guardar en sessionStorage de forma SÍNCRONA usando eval
+        await JS.InvokeVoidAsync("eval", $"sessionStorage.setItem('factura_token_{id}', '{token}')");
+
+        // Navegar
         Navigation.NavigateTo($"/factura/{id}?token={token}");
     }
 
@@ -91,8 +105,39 @@ else
         }
     }
 
-    private void IrAHome()
+    private async Task IrAHome()
     {
+        await DesbloquearBotonesNavegador();
         Navigation.NavigateTo("/");
+    }
+
+    private async Task BloquearBotonesNavegador()
+    {
+        await JS.InvokeVoidAsync("eval", @"
+            // Bloquear botones atrás y adelante
+            history.pushState(null, null, location.href);
+            window.onpopstate = function() {
+                history.pushState(null, null, location.href);
+            };
+        ");
+    }
+
+    private async Task DesbloquearBotonesNavegador()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval", @"
+                window.onpopstate = null;
+            ");
+        }
+        catch
+        {
+   
+        }
+    }
+
+    public void Dispose()
+    {
+      
     }
 }
