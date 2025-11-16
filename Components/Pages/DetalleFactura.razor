@@ -29,7 +29,9 @@ else
             <p><strong>Cliente:</strong></p>
             @if (modoEdicion)
             {
-                <input type="text" @bind="factura.NombreCliente" @bind:event="oninput" style="width: 300px;" />
+                <input type="text" value="@factura.NombreCliente"
+                       @oninput="@(async (e) => { factura.NombreCliente = e.Value?.ToString() ?? ""; await VerificarYHabilitarInterceptor(); })"
+                       style="width: 300px;" />
             }
             else
             {
@@ -39,7 +41,8 @@ else
             <p><strong>Fecha:</strong></p>
             @if (modoEdicion)
             {
-                <input type="date" @bind="factura.Fecha" @bind:event="oninput" />
+                <input type="date" value="@factura.Fecha.ToString("yyyy-MM-dd")"
+                       @onchange="@(async (e) => { if (DateTime.TryParse(e.Value?.ToString(), out var fecha)) { factura.Fecha = fecha; await VerificarYHabilitarInterceptor(); } })" />
             }
             else
             {
@@ -69,7 +72,9 @@ else
                             <td>
                                 @if (modoEdicion)
                                 {
-                                    <input type="text" @bind="art.Nombre" @bind:event="oninput" style="width: 200px;" />
+                                    <input type="text" value="@art.Nombre"
+                                           @oninput="@(async (e) => { art.Nombre = e.Value?.ToString() ?? ""; await VerificarYHabilitarInterceptor(); })"
+                                           style="width: 200px;" />
                                 }
                                 else
                                 {
@@ -79,7 +84,9 @@ else
                             <td>
                                 @if (modoEdicion)
                                 {
-                                    <input type="number" step="0.01" @bind="art.Precio" @bind:event="oninput" style="width: 100px;" />
+                                    <input type="number" step="0.01" value="@art.Precio"
+                                           @oninput="@(async (e) => { if (decimal.TryParse(e.Value?.ToString(), out var precio)) { art.Precio = precio; await VerificarYHabilitarInterceptor(); } })"
+                                           style="width: 100px;" />
                                 }
                                 else
                                 {
@@ -152,10 +159,12 @@ else
 
     private async void HabilitarEdicion()
     {
+        GuardarEstadoOriginal(); // Guardar ANTES de habilitar modo edición
         modoEdicion = true;
         mensaje = "";
-        GuardarEstadoOriginal();
-        await HabilitarInterceptorNavegacion();
+        StateHasChanged(); // Forzar actualización de UI
+
+        // NO habilitar interceptor aquí, se habilitará cuando haya cambios
     }
 
     private void GuardarEstadoOriginal()
@@ -180,26 +189,36 @@ else
 
     private bool TieneCambios()
     {
-        if (!modoEdicion || factura == null || facturaOriginal == null)
+        // Si no estamos en modo edición o no hay datos, no hay cambios
+        if (!modoEdicion || factura == null)
             return false;
 
+        // Si no se guardó el estado original, no podemos comparar (asumimos sin cambios)
+        if (facturaOriginal == null)
+            return false;
+
+        // Comparar cliente
         if (factura.NombreCliente != facturaOriginal.NombreCliente)
             return true;
 
+        // Comparar fecha
         if (factura.Fecha != facturaOriginal.Fecha)
             return true;
 
+        // Comparar cantidad de artículos
         if (factura.Articulos.Count != facturaOriginal.Articulos.Count)
             return true;
 
-        for (int i = 0; i < factura.Articulos.Count; i++)
+        // Comparar cada artículo
+        foreach (var artActual in factura.Articulos)
         {
-            var artActual = factura.Articulos[i];
             var artOriginal = facturaOriginal.Articulos.FirstOrDefault(a => a.Id == artActual.Id);
 
-            if (artOriginal == null)
+            // Si es un artículo nuevo (Id = 0 o no existe en original)
+            if (artActual.Id == 0 || artOriginal == null)
                 return true;
 
+            // Comparar nombre y precio
             if (artActual.Nombre != artOriginal.Nombre || artActual.Precio != artOriginal.Precio)
                 return true;
         }
@@ -279,14 +298,16 @@ else
 
     private void AgregarArticulo()
     {
-        factura.Articulos.Add(new Articulo { FacturaId = factura.Id });
+        factura!.Articulos.Add(new Articulo { FacturaId = factura.Id });
+        _ = VerificarYHabilitarInterceptor();
     }
 
     private void EliminarArticulo(Articulo art)
     {
-        if (factura.Articulos.Count > 1)
+        if (factura!.Articulos.Count > 1)
         {
             factura.Articulos.Remove(art);
+            _ = VerificarYHabilitarInterceptor();
         }
         else
         {
@@ -371,6 +392,18 @@ else
             };
             window.addEventListener('beforeunload', window.beforeUnloadHandler);
         ");
+    }
+
+    private async Task VerificarYHabilitarInterceptor()
+    {
+        if (TieneCambios())
+        {
+            await HabilitarInterceptorNavegacion();
+        }
+        else
+        {
+            await DeshabilitarInterceptorNavegacion();
+        }
     }
 
     private async Task DeshabilitarInterceptorNavegacion()
