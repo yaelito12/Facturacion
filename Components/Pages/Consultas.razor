@@ -1,5 +1,90 @@
-﻿<h3>Consultas</h3>
+﻿@page "/consultas"
+@using Facturacion.Data
+@using Microsoft.EntityFrameworkCore
+@inject FacturacionDbContext DbContext
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<h1>📊 Consultas Inteligentes</h1>
+<p>Explota la información de tu negocio con análisis detallados</p>
+
+<button @onclick="VolverInicio" style="margin-bottom: 20px;">← Volver al Inicio</button>
+
+<div style="margin: 20px 0;">
+    <h3>Selecciona una consulta:</h3>
+    <select @onchange="CambiarConsulta" style="width: 100%; padding: 10px; font-size: 16px;">
+        <option value="">-- Selecciona una consulta --</option>
+        <option value="total_facturacion">📈 Resumen General de Facturación</option>
+    </select>
+</div>
+
+@if (cargando)
+{
+    <div style="margin: 20px 0; padding: 20px; background: #f0f0f0; border-radius: 5px;">
+        <p><em>Procesando consulta...</em></p>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(resultado))
+{
+    <div style="margin: 20px 0; padding: 20px; background: #e8f5e9; border-radius: 5px; border-left: 4px solid #4caf50;">
+        <h3>Resultado:</h3>
+        <div style="white-space: pre-line;">@((MarkupString)resultado)</div>
+    </div>
+}
 
 @code {
+    private string resultado = "";
+    private bool cargando = false;
 
+    private async Task CambiarConsulta(ChangeEventArgs e)
+    {
+        var consulta = e.Value?.ToString();
+        if (string.IsNullOrEmpty(consulta)) return;
+
+        cargando = true;
+        resultado = "";
+        StateHasChanged();
+
+        await Task.Delay(100);
+
+        try
+        {
+            resultado = consulta switch
+            {
+                "total_facturacion" => await TotalFacturacion(),
+                _ => "Consulta no implementada"
+            };
+        }
+        catch (Exception ex)
+        {
+            resultado = $"<span style='color: red;'>Error al procesar la consulta: {ex.Message}</span>";
+        }
+
+        cargando = false;
+        StateHasChanged();
+    }
+
+    private async Task<string> TotalFacturacion()
+    {
+        var facturas = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .ToListAsync();
+
+        if (!facturas.Any())
+            return "No hay facturas registradas.";
+
+        var total = facturas.Sum(f => f.Articulos.Sum(a => a.Precio));
+        var cantidad = facturas.Count;
+        var promedio = total / cantidad;
+
+        return $"<strong>Facturación total:</strong> ${total:N2}<br/>" +
+               $"<strong>Total de facturas:</strong> {cantidad}<br/>" +
+               $"<strong>Ticket promedio:</strong> ${promedio:N2}";
+    }
+
+    private void VolverInicio()
+    {
+        Navigation.NavigateTo("/");
+    }
 }
