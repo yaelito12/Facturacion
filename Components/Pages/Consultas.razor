@@ -15,6 +15,9 @@
     <select @onchange="CambiarConsulta" style="width: 100%; padding: 10px; font-size: 16px;">
         <option value="">-- Selecciona una consulta --</option>
         <option value="total_facturacion">📈 Resumen General de Facturación</option>
+        <option value="articulo_mas_vendido">📦 Artículo Más Vendido</option>
+        <option value="cliente_mayor_gasto">👥 Cliente que Más Ha Gastado</option>
+        <option value="mes_mas_ventas">📅 Mes con Más Ventas</option>
     </select>
 </div>
 
@@ -53,6 +56,9 @@
             resultado = consulta switch
             {
                 "total_facturacion" => await TotalFacturacion(),
+                "articulo_mas_vendido" => await ArticuloMasVendido(),
+                "cliente_mayor_gasto" => await ClienteMayorGasto(),
+                "mes_mas_ventas" => await MesMasVentas(),
                 _ => "Consulta no implementada"
             };
         }
@@ -81,6 +87,65 @@
         return $"<strong>Facturación total:</strong> ${total:N2}<br/>" +
                $"<strong>Total de facturas:</strong> {cantidad}<br/>" +
                $"<strong>Ticket promedio:</strong> ${promedio:N2}";
+    }
+
+    private async Task<string> ArticuloMasVendido()
+    {
+        var articulos = await DbContext.Articulos
+            .GroupBy(a => a.Nombre)
+            .Select(g => new { Nombre = g.Key, Cantidad = g.Count() })
+            .OrderByDescending(x => x.Cantidad)
+            .FirstOrDefaultAsync();
+
+        if (articulos == null)
+            return "No hay datos de artículos vendidos.";
+
+        return $"<strong>{articulos.Nombre}</strong><br/>Vendido <strong>{articulos.Cantidad}</strong> veces";
+    }
+
+    private async Task<string> ClienteMayorGasto()
+    {
+        var facturas = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .ToListAsync();
+
+        var cliente = facturas
+            .GroupBy(f => f.NombreCliente)
+            .Select(g => new
+            {
+                Cliente = g.Key,
+                Total = g.Sum(f => f.Articulos.Sum(a => a.Precio))
+            })
+            .OrderByDescending(x => x.Total)
+            .FirstOrDefault();
+
+        if (cliente == null)
+            return "No hay datos de clientes.";
+
+        return $"<strong>{cliente.Cliente}</strong><br/>Gasto total: <strong>${cliente.Total:N2}</strong>";
+    }
+
+    private async Task<string> MesMasVentas()
+    {
+        var facturas = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .ToListAsync();
+
+        var meses = facturas
+            .GroupBy(f => new { f.Fecha.Year, f.Fecha.Month })
+            .Select(g => new
+            {
+                Mes = $"{g.Key.Month}/{g.Key.Year}",
+                Total = g.Sum(f => f.Articulos.Sum(a => a.Precio)),
+                Facturas = g.Count()
+            })
+            .OrderByDescending(x => x.Total)
+            .FirstOrDefault();
+
+        if (meses == null)
+            return "No hay datos de ventas.";
+
+        return $"<strong>{meses.Mes}</strong><br/>Facturación: <strong>${meses.Total:N2}</strong><br/>Facturas: {meses.Facturas}";
     }
 
     private void VolverInicio()
