@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using Facturacion.Data
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using Microsoft.EntityFrameworkCore
 @inject FacturacionDbContext DbContext
 @inject NavigationManager Navigation
 @inject ProtectedLocalStorage LocalStorage
@@ -11,38 +12,68 @@
 <div>
     <label>Fecha:</label>
     <input type="date" @bind="nuevaFactura.Fecha" @bind:after="GuardarEnStorage" min="@fechaMinima.ToString("yyyy-MM-dd")" />
+</div>
 
-</div>
-<div>
+<div style="position: relative;">
     <label>Nombre del Cliente:</label>
-    <input type="text" @bind="nuevaFactura.NombreCliente" @bind:after="GuardarEnStorage" style="width: 300px;" />
+    <input type="text"
+           @bind="nuevaFactura.NombreCliente"
+           @bind:after="GuardarEnStorage"
+           @oninput="BuscarClientes"
+           list="listaClientes"
+           style="width: 300px;" />
+    <datalist id="listaClientes">
+        @foreach (var cliente in clientesFiltrados)
+        {
+            <option value="@cliente" />
+        }
+    </datalist>
 </div>
+
 <h3>Artículos (Total: @articulosTemp.Count)</h3>
 @foreach (var art in articulosTemp.Select((a, i) => new { Articulo = a, Index = i }))
 {
     <div style="margin: 10px 0;">
         <h4>Artículo #@(art.Index + 1)</h4>
-        <input type="text" placeholder="Nombre artículo" @bind="art.Articulo.Nombre" @bind:after="GuardarEnStorage" style="width: 200px;" />
+        <input type="text"
+               placeholder="Nombre artículo"
+               value="@art.Articulo.Nombre"
+               @oninput="@(e => BuscarArticulos(art.Articulo, e))"
+               list="listaArticulos_@art.Index"
+               style="width: 200px;" />
+        <datalist id="listaArticulos_@art.Index">
+            @foreach (var articulo in articulosFiltrados)
+            {
+                <option value="@articulo.Nombre">$@articulo.Precio.ToString("F2")</option>
+            }
+        </datalist>
+
         <b> Precio:</b> <input type="number" step="0.01" placeholder="Precio" @bind="art.Articulo.Precio" @bind:after="GuardarEnStorage" style="width: 100px;" />
         <button @onclick="() => EliminarArticulo(art.Articulo)">Eliminar</button>
         <button @onclick="() => LimpiarArticulo(art.Articulo)">Limpiar</button>
     </div>
 }
 <button @onclick="AgregarArticulo">Agregar Artículo</button>
+
 <div style="margin: 20px 0;">
     <h4>Total: $@articulosTemp.Sum(a => a.Precio).ToString("F2")</h4>
 </div>
+
 @if (!string.IsNullOrEmpty(mensaje))
 {
     <p style="color: @(mensaje.Contains("exitosamente") ? "green" : "red"); font-weight: bold;">@mensaje</p>
 }
+
 <button @onclick="GuardarFactura">Guardar Factura</button>
+
 <div style="margin-bottom: 20px;">
     <button @onclick="IrAFacturas">Ver Facturas Registradas</button>
 </div>
+
 <div style="margin-bottom: 20px;">
     <button @onclick="IrAReportes">Reportes SAT</button>
 </div>
+
 @code {
     private Factura nuevaFactura = new() { Fecha = DateTime.Now };
     private List<Articulo> articulosTemp = new() { new Articulo() };
@@ -50,14 +81,92 @@
     private DateTime fechaMinima = DateTime.Now.AddDays(-300);
     private bool cargaInicial = true;
 
+    private List<string> todosLosClientes = new();
+    private List<string> clientesFiltrados = new();
+    private List<ArticuloHistorico> todosLosArticulos = new();
+    private List<ArticuloHistorico> articulosFiltrados = new();
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            await CargarHistorico();
             await CargarDesdeStorage();
             cargaInicial = false;
             StateHasChanged();
         }
+    }
+
+    private async Task CargarHistorico()
+    {
+        // Cargar clientes únicos
+        todosLosClientes = await DbContext.Facturas
+            .Where(f => !string.IsNullOrWhiteSpace(f.NombreCliente))
+            .Select(f => f.NombreCliente)
+            .Distinct()
+            .ToListAsync();
+
+        clientesFiltrados = todosLosClientes;
+
+        // Cargar artículos con último precio
+        todosLosArticulos = await DbContext.Articulos
+            .Where(a => !string.IsNullOrWhiteSpace(a.Nombre))
+            .GroupBy(a => a.Nombre)
+            .Select(g => new ArticuloHistorico
+            {
+                Nombre = g.Key,
+                Precio = g.OrderByDescending(a => a.Id).First().Precio
+            })
+            .ToListAsync();
+
+        articulosFiltrados = todosLosArticulos;
+    }
+
+    private void BuscarClientes(ChangeEventArgs e)
+    {
+        var busqueda = e.Value?.ToString() ?? "";
+        nuevaFactura.NombreCliente = busqueda;
+
+        if (string.IsNullOrWhiteSpace(busqueda))
+        {
+            clientesFiltrados = todosLosClientes;
+        }
+        else
+        {
+            clientesFiltrados = todosLosClientes
+                .Where(c => c.Contains(busqueda, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        GuardarEnStorage();
+    }
+
+    private void BuscarArticulos(Articulo articulo, ChangeEventArgs e)
+    {
+        var busqueda = e.Value?.ToString() ?? "";
+        articulo.Nombre = busqueda;
+
+        if (string.IsNullOrWhiteSpace(busqueda))
+        {
+            articulosFiltrados = todosLosArticulos;
+        }
+        else
+        {
+            articulosFiltrados = todosLosArticulos
+                .Where(a => a.Nombre.Contains(busqueda, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+       
+        var coincidencia = todosLosArticulos.FirstOrDefault(a =>
+            a.Nombre.Equals(busqueda, StringComparison.OrdinalIgnoreCase));
+
+        if (coincidencia != null && articulo.Precio == 0)
+        {
+            articulo.Precio = coincidencia.Precio;
+        }
+
+        GuardarEnStorage();
     }
 
     private async Task CargarDesdeStorage()
@@ -89,7 +198,6 @@
         }
         catch
         {
-     
         }
     }
 
@@ -112,7 +220,6 @@
         }
         catch
         {
-            // Ignorar errores de guardado
         }
     }
 
@@ -126,7 +233,6 @@
         }
         catch
         {
-            // Ignorar errores
         }
     }
 
@@ -165,23 +271,28 @@
             mensaje = "Debe ingresar el nombre del cliente";
             return;
         }
+
         var articulosValidos = articulosTemp.Where(a =>
             !string.IsNullOrWhiteSpace(a.Nombre) && a.Precio > 0).ToList();
+
         if (!articulosValidos.Any())
         {
             mensaje = "Debe agregar al menos un artículo válido con nombre y precio";
             return;
         }
+
         var factura = new Factura
         {
             Fecha = nuevaFactura.Fecha,
             NombreCliente = nuevaFactura.NombreCliente,
             Articulos = articulosValidos
         };
+
         DbContext.Facturas.Add(factura);
         await DbContext.SaveChangesAsync();
         mensaje = "Factura guardada exitosamente";
 
+        await CargarHistorico(); // Actualizar listas
         await LimpiarStorage();
 
         nuevaFactura = new() { Fecha = DateTime.Now };
@@ -192,19 +303,21 @@
     {
         Navigation.NavigateTo("/facturas");
     }
+
     private void IrAReportes()
     {
         Navigation.NavigateTo("/reportes");
     }
-
 
     private class ArticuloDto
     {
         public string Nombre { get; set; } = "";
         public decimal Precio { get; set; }
     }
+
+    private class ArticuloHistorico
+    {
+        public string Nombre { get; set; } = "";
+        public decimal Precio { get; set; }
+    }
 }
-
-
-}
-

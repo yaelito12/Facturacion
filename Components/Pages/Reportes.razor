@@ -3,6 +3,7 @@
 @using Microsoft.EntityFrameworkCore
 @inject FacturacionDbContext DbContext
 @inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
 <h1>Reportes para el SAT</h1>
@@ -14,7 +15,7 @@
 
 <div style="margin-bottom: 30px; padding: 20px; border: 1px solid #ccc;">
     <h3>Seleccionar Año</h3>
-    <select @bind="añoSeleccionado" @bind:after="CargarReporte" style="font-size: 16px; padding: 5px;">
+    <select @bind="añoSeleccionado" @bind:after="OnAñoSeleccionadoChanged" style="font-size: 16px; padding: 5px;">
         @foreach (var año in añosDisponibles)
         {
             <option value="@año">@año</option>
@@ -113,11 +114,31 @@
     private bool reporteCargado = false;
     private int? mesSeleccionado = null;
     private List<Factura> facturasDelMes = new();
+    private bool primerRenderizado = true;
 
     protected override async Task OnInitializedAsync()
     {
         await CargarAñosDisponibles();
         añoSeleccionado = DateTime.Now.Year;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Intentar cargar el año guardado en localStorage
+            var añoGuardadoStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "reportes_año_seleccionado");
+
+            if (!string.IsNullOrEmpty(añoGuardadoStr) && int.TryParse(añoGuardadoStr, out int añoGuardado))
+            {
+                // Verificar que el año guardado esté en la lista de años disponibles
+                if (añosDisponibles.Contains(añoGuardado))
+                {
+                    añoSeleccionado = añoGuardado;
+                    StateHasChanged();
+                }
+            }
+        }
     }
 
     private async Task CargarAñosDisponibles()
@@ -141,6 +162,13 @@
                 .OrderByDescending(a => a)
                 .ToList();
         }
+    }
+
+    private async Task OnAñoSeleccionadoChanged()
+    {
+        // Guardar el año seleccionado en localStorage
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "reportes_año_seleccionado", añoSeleccionado.ToString());
+        await CargarReporte();
     }
 
     private async Task CargarReporte()
