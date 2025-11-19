@@ -73,6 +73,9 @@
 <div style="margin-bottom: 20px;">
     <button @onclick="IrAReportes">Reportes SAT</button>
 </div>
+<div style="margin-bottom: 20px;">
+    <button @onclick="IrAConsultas">Consultas</button>
+</div>
 
 @code {
     private Factura nuevaFactura = new() { Fecha = DateTime.Now };
@@ -308,7 +311,10 @@
     {
         Navigation.NavigateTo("/reportes");
     }
-
+    private void IrAConsultas()
+    {
+        Navigation.NavigateTo("/consultas");
+    }
     private class ArticuloDto
     {
         public string Nombre { get; set; } = "";
