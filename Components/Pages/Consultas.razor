@@ -18,6 +18,10 @@
         <option value="articulo_mas_vendido">📦 Artículo Más Vendido</option>
         <option value="cliente_mayor_gasto">👥 Cliente que Más Ha Gastado</option>
         <option value="mes_mas_ventas">📅 Mes con Más Ventas</option>
+        <option value="dia_semana_mas_ventas">📅 Día de la Semana con Más Ventas</option>
+        <option value="evolucion_mensual">📊 Evolución Mensual de Ventas</option>
+        <option value="clientes_inactivos">⚠️ Clientes Inactivos (3+ meses)</option>
+        <option value="top_combos">🔗 Productos que se Compran Juntos</option>
     </select>
 </div>
 
@@ -59,6 +63,10 @@
                 "articulo_mas_vendido" => await ArticuloMasVendido(),
                 "cliente_mayor_gasto" => await ClienteMayorGasto(),
                 "mes_mas_ventas" => await MesMasVentas(),
+                "dia_semana_mas_ventas" => await DiaSemanaConMasVentas(),
+                "evolucion_mensual" => await EvolucionMensual(),
+                "clientes_inactivos" => await ClientesInactivos(),
+                "top_combos" => await TopCombos(),
                 _ => "Consulta no implementada"
             };
         }
@@ -146,6 +154,139 @@
             return "No hay datos de ventas.";
 
         return $"<strong>{meses.Mes}</strong><br/>Facturación: <strong>${meses.Total:N2}</strong><br/>Facturas: {meses.Facturas}";
+    }
+
+    private async Task<string> DiaSemanaConMasVentas()
+    {
+        var facturas = await DbContext.Facturas.ToListAsync();
+
+        var dias = facturas
+            .GroupBy(f => f.Fecha.DayOfWeek)
+            .Select(g => new
+            {
+                Dia = g.Key,
+                Cantidad = g.Count()
+            })
+            .OrderByDescending(x => x.Cantidad)
+            .ToList();
+
+        if (!dias.Any())
+            return "No hay datos disponibles.";
+
+        var diasEspanol = new Dictionary<DayOfWeek, string>
+        {
+            { DayOfWeek.Monday, "Lunes" },
+            { DayOfWeek.Tuesday, "Martes" },
+            { DayOfWeek.Wednesday, "Miércoles" },
+            { DayOfWeek.Thursday, "Jueves" },
+            { DayOfWeek.Friday, "Viernes" },
+            { DayOfWeek.Saturday, "Sábado" },
+            { DayOfWeek.Sunday, "Domingo" }
+        };
+
+        var html = "<strong>Distribución de ventas por día:</strong><br/><br/>";
+        foreach (var dia in dias)
+        {
+            html += $"• {diasEspanol[dia.Dia]}: <strong>{dia.Cantidad}</strong> facturas<br/>";
+        }
+        return html;
+    }
+
+    private async Task<string> EvolucionMensual()
+    {
+        var facturas = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .ToListAsync();
+
+        var meses = facturas
+            .GroupBy(f => new { f.Fecha.Year, f.Fecha.Month })
+            .Select(g => new
+            {
+                Mes = $"{g.Key.Month:00}/{g.Key.Year}",
+                Total = g.Sum(f => f.Articulos.Sum(a => a.Precio)),
+                Facturas = g.Count()
+            })
+            .OrderBy(x => x.Mes)
+            .ToList();
+
+        if (!meses.Any())
+            return "No hay datos disponibles.";
+
+        var html = "<strong>Evolución mensual de facturación:</strong><br/><br/>";
+        foreach (var mes in meses)
+        {
+            html += $"• {mes.Mes}: <strong>${mes.Total:N2}</strong> ({mes.Facturas} facturas)<br/>";
+        }
+        return html;
+    }
+
+    private async Task<string> ClientesInactivos()
+    {
+        var fechaLimite = DateTime.Now.AddMonths(-3);
+        var clientes = await DbContext.Facturas
+            .GroupBy(f => f.NombreCliente)
+            .Select(g => new
+            {
+                Cliente = g.Key,
+                UltimaCompra = g.Max(f => f.Fecha)
+            })
+            .Where(x => x.UltimaCompra < fechaLimite)
+            .OrderBy(x => x.UltimaCompra)
+            .ToListAsync();
+
+        if (!clientes.Any())
+            return "¡Excelente! No hay clientes inactivos.";
+
+        var html = $"<strong>Clientes sin compras desde hace 3+ meses:</strong> ({clientes.Count})<br/><br/>";
+        foreach (var cliente in clientes)
+        {
+            var diasInactivo = (DateTime.Now - cliente.UltimaCompra).Days;
+            html += $"• {cliente.Cliente} - Última compra: {cliente.UltimaCompra:dd/MM/yyyy} ({diasInactivo} días)<br/>";
+        }
+        return html;
+    }
+
+    private async Task<string> TopCombos()
+    {
+        var facturas = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .Where(f => f.Articulos.Count > 1)
+            .ToListAsync();
+
+        if (!facturas.Any())
+            return "No hay facturas con múltiples artículos.";
+
+        var combos = new Dictionary<string, int>();
+
+        foreach (var factura in facturas)
+        {
+            var articulos = factura.Articulos.Select(a => a.Nombre).OrderBy(n => n).ToList();
+            for (int i = 0; i < articulos.Count - 1; i++)
+            {
+                for (int j = i + 1; j < articulos.Count; j++)
+                {
+                    var combo = $"{articulos[i]} + {articulos[j]}";
+                    if (!combos.ContainsKey(combo))
+                        combos[combo] = 0;
+                    combos[combo]++;
+                }
+            }
+        }
+
+        var topCombos = combos
+            .OrderByDescending(x => x.Value)
+            .Take(10)
+            .ToList();
+
+        if (!topCombos.Any())
+            return "No se encontraron combos frecuentes.";
+
+        var html = "<strong>Top 10 combinaciones más frecuentes:</strong><br/><br/>";
+        foreach (var combo in topCombos)
+        {
+            html += $"• {combo.Key}: <strong>{combo.Value}</strong> veces<br/>";
+        }
+        return html;
     }
 
     private void VolverInicio()
