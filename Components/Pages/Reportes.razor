@@ -6,106 +6,137 @@
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
-<h1>Reportes para el SAT</h1>
+<link rel="stylesheet" href="/css/m3-styles.css" />
 
-<div style="margin-bottom: 20px;">
-    <button @onclick="IrAHome">← Volver a Nueva Factura</button>
-    <button @onclick="IrAFacturas">Ver Facturas</button>
-</div>
+<div class="m3-container">
+    <h1>📊 Reportes para el SAT</h1>
 
-<div style="margin-bottom: 30px; padding: 20px; border: 1px solid #ccc;">
-    <h3>Seleccionar Año</h3>
-    <select @bind="añoSeleccionado" @bind:after="OnAñoSeleccionadoChanged" style="font-size: 16px; padding: 5px;">
-        @foreach (var año in añosDisponibles)
-        {
-            <option value="@año">@año</option>
-        }
-    </select>
-    <button @onclick="CargarReporte" style="margin-left: 10px;">Mostrar Reporte</button>
-</div>
+    <div class="m3-button-group">
+        <button class="m3-button m3-button-outlined" @onclick="IrAHome">← Volver a Nueva Factura</button>
+        <button class="m3-button m3-button-outlined" @onclick="IrAFacturas">📋 Ver Facturas</button>
+        <button class="m3-button m3-button-outlined" @onclick="IrAConsultas">🔍 Ver Consultas</button>
+    </div>
 
-@if (reporteCargado)
-{
-    @if (!reporteMensual.Any())
+    <div class="m3-card m3-card-elevated">
+        <h3>Seleccionar Año</h3>
+        <div style="display: flex; gap: 12px; align-items: end;">
+            <div class="m3-text-field" style="flex: 1;">
+                <label>Año:</label>
+                <select @bind="añoSeleccionado" @bind:after="OnAñoSeleccionadoChanged">
+                    @foreach (var año in añosDisponibles)
+                    {
+                        <option value="@año">@año</option>
+                    }
+                </select>
+            </div>
+            <button class="m3-button m3-button-filled" @onclick="CargarReporte">
+                📈 Mostrar Reporte
+            </button>
+        </div>
+    </div>
+
+    @if (reporteCargado)
     {
-        <p style="color: red; font-weight: bold;">No hay facturas registradas para el año @añoSeleccionado</p>
-    }
-    else
-    {
-        <h2>Reporte del Año @añoSeleccionado</h2>
-
-        <table border="1" cellpadding="10" cellspacing="0" style="width: 100%; margin-top: 20px;">
-            <thead style="background-color: #f0f0f0;">
-                <tr>
-                    <th>Mes</th>
-                    <th>Cantidad de Facturas</th>
-                    <th>Total del Mes</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var reporte in reporteMensual)
-                {
-                    <tr>
-                        <td><strong>@reporte.NombreMes</strong></td>
-                        <td style="text-align: center;">@reporte.CantidadFacturas</td>
-                        <td style="text-align: right;"><strong>$@reporte.TotalMes.ToString("N2")</strong></td>
-                        <td style="text-align: center;">
-                            <button @onclick="() => MostrarDetallesMes(reporte.NumeroMes)">Ver Facturas</button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-            <tfoot style="background-color: #e0e0e0; font-weight: bold;">
-                <tr>
-                    <td>TOTAL ANUAL</td>
-                    <td style="text-align: center;">@reporteMensual.Sum(r => r.CantidadFacturas)</td>
-                    <td style="text-align: right;">$@reporteMensual.Sum(r => r.TotalMes).ToString("N2")</td>
-                    <td></td>
-                </tr>
-            </tfoot>
-        </table>
-
-        @if (mesSeleccionado.HasValue && facturasDelMes.Any())
+        @if (!reporteMensual.Any())
         {
-            <div style="margin-top: 40px; padding: 20px; border: 2px solid #333;">
-                <h3>Detalle de Facturas - @ObtenerNombreMes(mesSeleccionado.Value) @añoSeleccionado</h3>
-                <button @onclick="CerrarDetalleMes" style="margin-bottom: 10px;">Cerrar Detalle</button>
-
-                <table border="1" cellpadding="8" cellspacing="0" style="width: 100%;">
-                    <thead style="">
-                        <tr>
-                            <th>ID</th>
-                            <th>Fecha</th>
-                            <th>Cliente</th>
-                            <th>Total</th>
-
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var factura in facturasDelMes)
-                        {
-                            <tr>
-                                <td>@factura.Id</td>
-                                <td>@factura.Fecha.ToString("dd/MM/yyyy")</td>
-                                <td>@factura.NombreCliente</td>
-                                <td style="text-align: right;">$@factura.Total.ToString("N2")</td>
-
-                            </tr>
-                        }
-                    </tbody>
-                    <tfoot style="background-color; font-weight: bold;">
-                        <tr>
-                            <td colspan="3">TOTAL DEL MES</td>
-                            <td style="text-align: right;">$@facturasDelMes.Sum(f => f.Total).ToString("N2")</td>
-                            <td></td>
-                        </tr>
-                    </tfoot>
-                </table>
+            <div class="m3-message m3-message-error">
+                <strong>No hay facturas registradas para el año @añoSeleccionado</strong>
             </div>
         }
+        else
+        {
+            <div class="m3-card m3-card-elevated">
+                <h2>Reporte del Año @añoSeleccionado</h2>
+
+                <div style="padding: 0; overflow: hidden; border-radius: var(--md-sys-shape-corner-medium);">
+                    <table class="m3-table">
+                        <thead>
+                            <tr>
+                                <th>Mes</th>
+                                <th style="text-align: center;">Cantidad de Facturas</th>
+                                <th style="text-align: right;">Total del Mes</th>
+                                <th style="text-align: center;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var reporte in reporteMensual)
+                            {
+                                <tr>
+                                    <td><strong>@reporte.NombreMes</strong></td>
+                                    <td style="text-align: center;">
+                                        <span class="m3-chip">@reporte.CantidadFacturas</span>
+                                    </td>
+                                    <td style="text-align: right;"><strong>$@reporte.TotalMes.ToString("N2")</strong></td>
+                                    <td style="text-align: center;">
+                                        <button class="m3-button m3-button-tonal" @onclick="() => MostrarDetallesMes(reporte.NumeroMes)">
+                                            👁️ Ver Facturas
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td><strong>TOTAL ANUAL</strong></td>
+                                <td style="text-align: center;">
+                                    <strong>@reporteMensual.Sum(r => r.CantidadFacturas)</strong>
+                                </td>
+                                <td style="text-align: right;">
+                                    <strong>$@reporteMensual.Sum(r => r.TotalMes).ToString("N2")</strong>
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            @if (mesSeleccionado.HasValue && facturasDelMes.Any())
+            {
+                <div class="m3-card" style="background-color: var(--md-sys-color-surface-container-high);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="margin: 0;">Detalle de Facturas - @ObtenerNombreMes(mesSeleccionado.Value) @añoSeleccionado</h3>
+                        <button class="m3-button m3-button-outlined" @onclick="CerrarDetalleMes">
+                            ✕ Cerrar
+                        </button>
+                    </div>
+
+                    <div style="padding: 0; overflow: hidden; border-radius: var(--md-sys-shape-corner-medium);">
+                        <table class="m3-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Fecha</th>
+                                    <th>Cliente</th>
+                                    <th style="text-align: right;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var factura in facturasDelMes)
+                                {
+                                    <tr>
+                                        <td><strong>#@factura.Id</strong></td>
+                                        <td>@factura.Fecha.ToString("dd/MM/yyyy")</td>
+                                        <td>@factura.NombreCliente</td>
+                                        <td style="text-align: right;"><strong>$@factura.Total.ToString("N2")</strong></td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="3"><strong>TOTAL DEL MES</strong></td>
+                                    <td style="text-align: right;">
+                                        <strong>$@facturasDelMes.Sum(f => f.Total).ToString("N2")</strong>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            }
+        }
     }
-}
+</div>
 
 @code {
     private int añoSeleccionado;
@@ -114,7 +145,6 @@
     private bool reporteCargado = false;
     private int? mesSeleccionado = null;
     private List<Factura> facturasDelMes = new();
-    private bool primerRenderizado = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -126,12 +156,10 @@
     {
         if (firstRender)
         {
-            // Intentar cargar el año guardado en localStorage
             var añoGuardadoStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "reportes_año_seleccionado");
 
             if (!string.IsNullOrEmpty(añoGuardadoStr) && int.TryParse(añoGuardadoStr, out int añoGuardado))
             {
-                // Verificar que el año guardado esté en la lista de años disponibles
                 if (añosDisponibles.Contains(añoGuardado))
                 {
                     añoSeleccionado = añoGuardado;
@@ -156,7 +184,6 @@
         }
         else
         {
-            // Si no hay facturas, mostrar los últimos 5 años
             var añoActual = DateTime.Now.Year;
             añosDisponibles = Enumerable.Range(añoActual - 4, 5)
                 .OrderByDescending(a => a)
@@ -166,7 +193,6 @@
 
     private async Task OnAñoSeleccionadoChanged()
     {
-        // Guardar el año seleccionado en localStorage
         await JSRuntime.InvokeVoidAsync("localStorage.setItem", "reportes_año_seleccionado", añoSeleccionado.ToString());
         await CargarReporte();
     }
@@ -182,7 +208,6 @@
             .Where(f => f.Fecha.Year == añoSeleccionado)
             .ToListAsync();
 
-        // Agrupar por mes
         var facturasPorMes = facturas
             .GroupBy(f => f.Fecha.Month)
             .OrderBy(g => g.Key)
@@ -234,13 +259,8 @@
             10 => "Octubre",
             11 => "Noviembre",
             12 => "Diciembre",
-            _ => "Desconocidoo"
+            _ => "Desconocido"
         };
-    }
-
-    private void VerDetalle(int id)
-    {
-        Navigation.NavigateTo($"/factura/{id}");
     }
 
     private void IrAHome()
@@ -251,6 +271,11 @@
     private void IrAFacturas()
     {
         Navigation.NavigateTo("/facturas");
+    }
+
+    private void IrAConsultas()
+    {
+        Navigation.NavigateTo("/consultas");
     }
 
     public class ReporteMensual

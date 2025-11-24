@@ -67,8 +67,8 @@
                     </div>
 
                     <div class="m3-button-group">
-                        <button class="m3-button m3-button-outlined" @onclick="() => LimpiarArticulo(art.Articulo)">🧹 Limpiar</button>
-                        <button class="m3-button m3-button-error" @onclick="() => EliminarArticulo(art.Articulo)">🗑️ Eliminar</button>
+                        <button class="m3-button m3-button-outlined" @onclick="@(() => LimpiarArticulo(art.Articulo))">🧹 Limpiar</button>
+                        <button class="m3-button m3-button-error" @onclick="@(() => EliminarArticulo(art.Articulo))">🗑️ Eliminar</button>
                     </div>
                 </div>
             </div>
@@ -317,9 +317,20 @@
         articulosTemp = new() { new Articulo() };
     }
 
-    private void IrAFacturas() => Navigation.NavigateTo("/facturas");
-    private void IrAReportes() => Navigation.NavigateTo("/reportes");
-    private void IrAConsultas() => Navigation.NavigateTo("/consultas");
+    private void IrAFacturas()
+    {
+        Navigation.NavigateTo("/facturas");
+    }
+
+    private void IrAReportes()
+    {
+        Navigation.NavigateTo("/reportes");
+    }
+
+    private void IrAConsultas()
+    {
+        Navigation.NavigateTo("/consultas");
+    }
 
     private class ArticuloDto
     {

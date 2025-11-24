@@ -66,10 +66,10 @@
                             <td style="text-align: right;"><strong>$@f.Total.ToString("F2")</strong></td>
                             <td style="text-align: center;">
                                 <div class="m3-button-group" style="justify-content: center;">
-                                    <button class="m3-button m3-button-tonal" @onclick="() => VerDetalle(f.Id)">
+                                    <button class="m3-button m3-button-tonal" @onclick="@(() => VerDetalle(f.Id))">
                                         👁️ Ver
                                     </button>
-                                    <button class="m3-button m3-button-error" @onclick="() => EliminarFactura(f.Id)">
+                                    <button class="m3-button m3-button-error" @onclick="@(() => EliminarFactura(f.Id))">
                                         🗑️ Eliminar
                                     </button>
                                 </div>
