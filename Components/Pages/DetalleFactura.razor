@@ -10,144 +10,205 @@
 @rendermode InteractiveServer
 @implements IDisposable
 
-<h1>Detalle de Factura</h1>
+<link rel="stylesheet" href="/css/m3-styles.css" />
 
-@if (cargando)
-{
-    <p>Verificando acceso...</p>
-}
-else if (accesoNoAutorizado)
-{
-    <div>
-        <h2>⚠️ Acceso No Autorizado</h2>
-        <p>No tienes permisos para acceder a esta factura directamente.</p>
-        <p>Por favor, accede desde la lista de facturas.</p>
-        <button @onclick="IrAFacturas">Ir a Lista de Facturas</button>
-    </div>
-}
-else if (factura == null)
-{
-    <p>Factura no encontrada</p>
-    <button @onclick="IrAFacturas">← Volver a Facturas</button>
-}
-else
-{
-    <div style="margin-bottom: 20px;">
-        <button @onclick="IrAFacturas">← Volver a Facturas</button>
-        <button @onclick="IrAHome">Ir a Nueva Factura</button>
-        <button @onclick="HabilitarEdicion">Editar Factura</button>
-    </div>
+<div class="m3-container">
+    @if (cargando)
+    {
+        <div class="m3-card" style="text-align: center; padding: 48px;">
+            <p style="color: var(--md-sys-color-on-surface-variant);">Verificando acceso...</p>
+        </div>
+    }
+    else if (accesoNoAutorizado)
+    {
+        <div class="m3-card m3-card-elevated" style="text-align: center; padding: 48px; border: 2px solid var(--md-sys-color-error);">
+            <h2 style="color: var(--md-sys-color-error);">Acceso No Autorizado</h2>
+            <p style="color: var(--md-sys-color-on-surface-variant); margin: 16px 0;">
+                No tienes permisos para acceder a esta factura directamente.
+            </p>
+            <p style="color: var(--md-sys-color-on-surface-variant); margin-bottom: 24px;">
+                Por favor, accede desde la lista de facturas.
+            </p>
+            <button class="m3-button m3-button-filled" @onclick="IrAFacturas">
+                Ir a Lista de Facturas
+            </button>
+        </div>
+    }
+    else if (factura == null)
+    {
+        <div class="m3-card m3-card-elevated" style="text-align: center; padding: 48px;">
+            <h2>Factura no encontrada</h2>
+            <button class="m3-button m3-button-filled" @onclick="IrAFacturas" style="margin-top: 24px;">
+                ← Volver a Facturas
+            </button>
+        </div>
+    }
+    else
+    {
+        <h1>Detalle de Factura</h1>
 
-    <div style="border: 2px solid black; padding: 20px;">
-        <h2>Factura #@factura.Id</h2>
-
-        <div>
-            <p><strong>Cliente:</strong></p>
-            @if (modoEdicion)
+        <div class="m3-button-group">
+            <button class="m3-button m3-button-outlined" @onclick="IrAFacturas">
+                ← Volver a Facturas
+            </button>
+            <button class="m3-button m3-button-outlined" @onclick="IrAHome">
+                Ir a Nueva Factura
+            </button>
+            @if (!modoEdicion)
             {
-                <input type="text" value="@factura.NombreCliente"
-                       @oninput="@(async (e) => { factura.NombreCliente = e.Value?.ToString() ?? ""; await VerificarYHabilitarInterceptor(); })"
-                       style="width: 300px;" />
-            }
-            else
-            {
-                <p>@factura.NombreCliente</p>
-            }
-
-            <p><strong>Fecha:</strong></p>
-            @if (modoEdicion)
-            {
-                <input type="date" value="@factura.Fecha.ToString("yyyy-MM-dd")"
-                       @onchange="@(async (e) => { if (DateTime.TryParse(e.Value?.ToString(), out var fecha)) { factura.Fecha = fecha; await VerificarYHabilitarInterceptor(); } })" />
-            }
-            else
-            {
-                <p>@factura.Fecha.ToShortDateString()</p>
+                <button class="m3-button m3-button-filled" @onclick="HabilitarEdicion">
+                    Editar Factura
+                </button>
             }
         </div>
 
-        <h3>Artículos:</h3>
-
-        @if (factura.Articulos != null && factura.Articulos.Any())
-        {
-            <table border="1" cellpadding="10" cellspacing="0">
-                <thead>
-                    <tr>
-                        <th>Artículo</th>
-                        <th>Precio</th>
-                        @if (modoEdicion)
-                        {
-                            <th>Acciones</th>
-                        }
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var art in factura.Articulos)
-                    {
-                        <tr>
-                            <td>
-                                @if (modoEdicion)
-                                {
-                                    <input type="text" value="@art.Nombre"
-                                           @oninput="@(async (e) => { art.Nombre = e.Value?.ToString() ?? ""; await VerificarYHabilitarInterceptor(); })"
-                                           style="width: 200px;" />
-                                }
-                                else
-                                {
-                                    @art.Nombre
-                                }
-                            </td>
-                            <td>
-                                @if (modoEdicion)
-                                {
-                                    <input type="number" step="0.01" value="@art.Precio"
-                                           @oninput="@(async (e) => { if (decimal.TryParse(e.Value?.ToString(), out var precio)) { art.Precio = precio; await VerificarYHabilitarInterceptor(); } })"
-                                           style="width: 100px;" />
-                                }
-                                else
-                                {
-                                    <text>$@art.Precio.ToString("F2")</text>
-                                }
-                            </td>
-                            @if (modoEdicion)
-                            {
-                                <td>
-                                    <button @onclick="() => EliminarArticulo(art)">Eliminar</button>
-                                </td>
-                            }
-                        </tr>
-                    }
-                </tbody>
-            </table>
-
-            @if (modoEdicion)
-            {
-                <button @onclick="AgregarArticulo" style="margin-top: 10px;">Agregar Artículo</button>
-            }
-        }
-        else
-        {
-            <p>No hay artículos en esta factura.</p>
-        }
-
-        <div style="margin-top: 30px;">
-            <h3>Total: $@factura.Total.ToString("F2")</h3>
-        </div>
-
-        @if (modoEdicion)
-        {
-            <div style="margin-top: 20px;">
-                <button @onclick="GuardarCambios">Guardar Cambios</button>
-                <button @onclick="CancelarEdicion">Cancelar</button>
+        <div class="m3-card m3-card-elevated">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <h2 style="margin: 0;">Factura #@factura.Id</h2>
+                @if (modoEdicion)
+                {
+                    <span class="m3-chip" style="background-color: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-on-tertiary-container);">
+                        Modo Edición
+                    </span>
+                }
             </div>
-        }
 
-        @if (!string.IsNullOrEmpty(mensaje))
-        {
-            <p>@mensaje</p>
-        }
-    </div>
-}
+            <div class="m3-text-field">
+                <label>Cliente:</label>
+                @if (modoEdicion)
+                {
+                    <input type="text" value="@factura.NombreCliente"
+                           @oninput="@(async (e) => { factura.NombreCliente = e.Value?.ToString() ?? ""; await VerificarYHabilitarInterceptor(); })" />
+                }
+                else
+                {
+                    <p style="font-size: 18px; padding: 16px; background-color: var(--md-sys-color-surface-container-high); border-radius: var(--md-sys-shape-corner-small); margin: 0;">
+                        @factura.NombreCliente
+                    </p>
+                }
+            </div>
+
+            <div class="m3-text-field">
+                <label>Fecha:</label>
+                @if (modoEdicion)
+                {
+                    <input type="date" value="@factura.Fecha.ToString("yyyy-MM-dd")"
+                           @onchange="@(async (e) => { if (DateTime.TryParse(e.Value?.ToString(), out var fecha)) { factura.Fecha = fecha; await VerificarYHabilitarInterceptor(); } })" />
+                }
+                else
+                {
+                    <p style="font-size: 18px; padding: 16px; background-color: var(--md-sys-color-surface-container-high); border-radius: var(--md-sys-shape-corner-small); margin: 0;">
+                        @factura.Fecha.ToString("dd/MM/yyyy")
+                    </p>
+                }
+            </div>
+
+            <hr class="m3-divider" />
+
+            <h3>Artículos</h3>
+
+            @if (factura.Articulos != null && factura.Articulos.Any())
+            {
+                <div style="padding: 0; overflow: hidden;">
+                    <table class="m3-table">
+                        <thead>
+                            <tr>
+                                <th>Artículo</th>
+                                <th style="text-align: right;">Precio</th>
+                                @if (modoEdicion)
+                                {
+                                    <th style="text-align: center;">Acciones</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var art in factura.Articulos)
+                            {
+                                <tr>
+                                    <td>
+                                        @if (modoEdicion)
+                                        {
+                                            <input type="text" value="@art.Nombre"
+                                                   @oninput="@(async (e) => { art.Nombre = e.Value?.ToString() ?? ""; await VerificarYHabilitarInterceptor(); })"
+                                                   style="width: 100%;" />
+                                        }
+                                        else
+                                        {
+                                            @art.Nombre
+                                        }
+                                    </td>
+                                    <td style="text-align: right;">
+                                        @if (modoEdicion)
+                                        {
+                                            <input type="number" step="0.01" value="@art.Precio"
+                                                   @oninput="@(async (e) => { if (decimal.TryParse(e.Value?.ToString(), out var precio)) { art.Precio = precio; await VerificarYHabilitarInterceptor(); } })"
+                                                   style="width: 120px; text-align: right;" />
+                                        }
+                                        else
+                                        {
+                                            <strong>$@art.Precio.ToString("F2")</strong>
+                                        }
+                                    </td>
+                                    @if (modoEdicion)
+                                    {
+                                        <td style="text-align: center;">
+                                            <button class="m3-button m3-button-text" style="color: var(--md-sys-color-error);" @onclick="() => EliminarArticulo(art)">
+                                                Eliminar
+                                            </button>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td><strong>TOTAL</strong></td>
+                                <td style="text-align: right;"><strong>$@factura.Total.ToString("F2")</strong></td>
+                                @if (modoEdicion)
+                                {
+                                    <td></td>
+                                }
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                @if (modoEdicion)
+                {
+                    <button class="m3-button m3-button-tonal" @onclick="AgregarArticulo" style="margin-top: 16px;">
+                        Agregar Artículo
+                    </button>
+                }
+            }
+            else
+            {
+                <p style="text-align: center; color: var(--md-sys-color-on-surface-variant); padding: 24px;">
+                    No hay artículos en esta factura.
+                </p>
+            }
+
+            @if (modoEdicion)
+            {
+                <hr class="m3-divider" />
+                <div class="m3-button-group">
+                    <button class="m3-button m3-button-filled" @onclick="GuardarCambios">
+                        Guardar Cambios
+                    </button>
+                    <button class="m3-button m3-button-outlined" @onclick="CancelarEdicion">
+                        Cancelar
+                    </button>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(mensaje))
+            {
+                <div class="@(mensaje.Contains("exitosamente") ? "m3-message m3-message-success" : "m3-message m3-message-error")">
+                    @mensaje
+                </div>
+            }
+        </div>
+    }
+</div>
 
 @code {
     [Parameter]
@@ -162,22 +223,19 @@ else
     private string mensaje = "";
     private bool navegacionConfirmada = false;
     private bool accesoNoAutorizado = false;
-    private bool cargando = true; // Empieza en true para mostrar "Verificando acceso..."
+    private bool cargando = true;
 
     protected override async Task OnInitializedAsync()
     {
-        // Validar acceso antes de cargar la factura
         var accesoAutorizado = await NavService.ValidarYAutorizarAsync(Id, Token);
 
         if (!accesoAutorizado)
         {
-            Console.WriteLine($"[Factura] Acceso denegado para factura {Id} con token: {Token}");
             accesoNoAutorizado = true;
             cargando = false;
             return;
         }
 
-        Console.WriteLine($"[Factura] Acceso autorizado para factura {Id}");
         await CargarFactura();
         Navigation.LocationChanged += OnLocationChanged;
         cargando = false;
@@ -193,12 +251,10 @@ else
 
     private async void HabilitarEdicion()
     {
-        GuardarEstadoOriginal(); // Guardar ANTES de habilitar modo edición
+        GuardarEstadoOriginal();
         modoEdicion = true;
         mensaje = "";
-        StateHasChanged(); // Forzar actualización de UI
-
-        // NO habilitar interceptor aquí, se habilitará cuando haya cambios
+        StateHasChanged();
     }
 
     private void GuardarEstadoOriginal()
@@ -223,36 +279,25 @@ else
 
     private bool TieneCambios()
     {
-        // Si no estamos en modo edición o no hay datos, no hay cambios
-        if (!modoEdicion || factura == null)
+        if (!modoEdicion || factura == null || facturaOriginal == null)
             return false;
 
-        // Si no se guardó el estado original, no podemos comparar (asumimos sin cambios)
-        if (facturaOriginal == null)
-            return false;
-
-        // Comparar cliente
         if (factura.NombreCliente != facturaOriginal.NombreCliente)
             return true;
 
-        // Comparar fecha
         if (factura.Fecha != facturaOriginal.Fecha)
             return true;
 
-        // Comparar cantidad de artículos
         if (factura.Articulos.Count != facturaOriginal.Articulos.Count)
             return true;
 
-        // Comparar cada artículo
         foreach (var artActual in factura.Articulos)
         {
             var artOriginal = facturaOriginal.Articulos.FirstOrDefault(a => a.Id == artActual.Id);
 
-            // Si es un artículo nuevo (Id = 0 o no existe en original)
             if (artActual.Id == 0 || artOriginal == null)
                 return true;
 
-            // Comparar nombre y precio
             if (artActual.Nombre != artOriginal.Nombre || artActual.Precio != artOriginal.Precio)
                 return true;
         }
@@ -362,7 +407,6 @@ else
             await DeshabilitarInterceptorNavegacion();
         }
 
-        // Limpiar el token antes de salir
         NavService.RevocarAutorizacion(Id);
         Navigation.NavigateTo("/facturas");
     }
@@ -380,7 +424,6 @@ else
             await DeshabilitarInterceptorNavegacion();
         }
 
-        // Limpiar el token antes de salir
         NavService.RevocarAutorizacion(Id);
         Navigation.NavigateTo("/");
     }
@@ -389,10 +432,7 @@ else
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        if (procesandoNavegacion)
-            return;
-
-        if (e.Location.Contains($"/factura/{Id}"))
+        if (procesandoNavegacion || e.Location.Contains($"/factura/{Id}"))
             return;
 
         if (modoEdicion && TieneCambios() && !navegacionConfirmada)
@@ -456,7 +496,6 @@ else
         Navigation.LocationChanged -= OnLocationChanged;
         _ = DeshabilitarInterceptorNavegacion();
 
-        // Limpiar token al salir
         if (!accesoNoAutorizado)
         {
             NavService.RevocarAutorizacion(Id);
