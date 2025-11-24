@@ -1,296 +1,288 @@
-﻿@page "/consultas"
+﻿@page "/reportes"
 @using Facturacion.Data
 @using Microsoft.EntityFrameworkCore
 @inject FacturacionDbContext DbContext
 @inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
-<h1>📊 Consultas Inteligentes</h1>
-<p>Explota la información de tu negocio con análisis detallados</p>
+<link rel="stylesheet" href="/css/m3-styles.css" />
 
-<button @onclick="VolverInicio" style="margin-bottom: 20px;">← Volver al Inicio</button>
+<div class="m3-container">
+    <h1>📊 Reportes para el SAT</h1>
 
-<div style="margin: 20px 0;">
-    <h3>Selecciona una consulta:</h3>
-    <select @onchange="CambiarConsulta" style="width: 100%; padding: 10px; font-size: 16px;">
-        <option value="">-- Selecciona una consulta --</option>
-        <option value="total_facturacion">📈 Resumen General de Facturación</option>
-        <option value="articulo_mas_vendido">📦 Artículo Más Vendido</option>
-        <option value="cliente_mayor_gasto">👥 Cliente que Más Ha Gastado</option>
-        <option value="mes_mas_ventas">📅 Mes con Más Ventas</option>
-        <option value="dia_semana_mas_ventas">📅 Día de la Semana con Más Ventas</option>
-        <option value="evolucion_mensual">📊 Evolución Mensual de Ventas</option>
-        <option value="clientes_inactivos">⚠️ Clientes Inactivos (3+ meses)</option>
-        <option value="top_combos">🔗 Productos que se Compran Juntos</option>
-    </select>
+    <div class="m3-button-group">
+        <button class="m3-button m3-button-outlined" @onclick="IrAHome">← Volver a Nueva Factura</button>
+        <button class="m3-button m3-button-outlined" @onclick="IrAFacturas">📋 Ver Facturas</button>
+        <button class="m3-button m3-button-outlined" @onclick="IrAConsultas">🔍 Ver Consultas</button>
+    </div>
+
+    <div class="m3-card m3-card-elevated">
+        <h3>Seleccionar Año</h3>
+        <div style="display: flex; gap: 12px; align-items: end;">
+            <div class="m3-text-field" style="flex: 1;">
+                <label>Año:</label>
+                <select @bind="añoSeleccionado" @bind:after="OnAñoSeleccionadoChanged">
+                    @foreach (var año in añosDisponibles)
+                    {
+                        <option value="@año">@año</option>
+                    }
+                </select>
+            </div>
+            <button class="m3-button m3-button-filled" @onclick="CargarReporte">
+                📈 Mostrar Reporte
+            </button>
+        </div>
+    </div>
+
+    @if (reporteCargado)
+    {
+        @if (!reporteMensual.Any())
+        {
+            <div class="m3-message m3-message-error">
+                <strong>No hay facturas registradas para el año @añoSeleccionado</strong>
+            </div>
+        }
+        else
+        {
+            <div class="m3-card m3-card-elevated">
+                <h2>Reporte del Año @añoSeleccionado</h2>
+
+                <div style="padding: 0; overflow: hidden; border-radius: var(--md-sys-shape-corner-medium);">
+                    <table class="m3-table">
+                        <thead>
+                            <tr>
+                                <th>Mes</th>
+                                <th style="text-align: center;">Cantidad de Facturas</th>
+                                <th style="text-align: right;">Total del Mes</th>
+                                <th style="text-align: center;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var reporte in reporteMensual)
+                            {
+                                <tr>
+                                    <td><strong>@reporte.NombreMes</strong></td>
+                                    <td style="text-align: center;">
+                                        <span class="m3-chip">@reporte.CantidadFacturas</span>
+                                    </td>
+                                    <td style="text-align: right;"><strong>$@reporte.TotalMes.ToString("N2")</strong></td>
+                                    <td style="text-align: center;">
+                                        <button class="m3-button m3-button-tonal" @onclick="() => MostrarDetallesMes(reporte.NumeroMes)">
+                                            👁️ Ver Facturas
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td><strong>TOTAL ANUAL</strong></td>
+                                <td style="text-align: center;">
+                                    <strong>@reporteMensual.Sum(r => r.CantidadFacturas)</strong>
+                                </td>
+                                <td style="text-align: right;">
+                                    <strong>$@reporteMensual.Sum(r => r.TotalMes).ToString("N2")</strong>
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            @if (mesSeleccionado.HasValue && facturasDelMes.Any())
+            {
+                <div class="m3-card" style="background-color: var(--md-sys-color-surface-container-high);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="margin: 0;">Detalle de Facturas - @ObtenerNombreMes(mesSeleccionado.Value) @añoSeleccionado</h3>
+                        <button class="m3-button m3-button-outlined" @onclick="CerrarDetalleMes">
+                            ✕ Cerrar
+                        </button>
+                    </div>
+
+                    <div style="padding: 0; overflow: hidden; border-radius: var(--md-sys-shape-corner-medium);">
+                        <table class="m3-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Fecha</th>
+                                    <th>Cliente</th>
+                                    <th style="text-align: right;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var factura in facturasDelMes)
+                                {
+                                    <tr>
+                                        <td><strong>#@factura.Id</strong></td>
+                                        <td>@factura.Fecha.ToString("dd/MM/yyyy")</td>
+                                        <td>@factura.NombreCliente</td>
+                                        <td style="text-align: right;"><strong>$@factura.Total.ToString("N2")</strong></td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="3"><strong>TOTAL DEL MES</strong></td>
+                                    <td style="text-align: right;">
+                                        <strong>$@facturasDelMes.Sum(f => f.Total).ToString("N2")</strong>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            }
+        }
+    }
 </div>
 
-@if (cargando)
-{
-    <div style="margin: 20px 0; padding: 20px; background: #f0f0f0; border-radius: 5px;">
-        <p><em>Procesando consulta...</em></p>
-    </div>
-}
-
-@if (!string.IsNullOrEmpty(resultado))
-{
-    <div style="margin: 20px 0; padding: 20px; background: #e8f5e9; border-radius: 5px; border-left: 4px solid #4caf50;">
-        <h3>Resultado:</h3>
-        <div style="white-space: pre-line;">@((MarkupString)resultado)</div>
-    </div>
-}
-
 @code {
-    private string resultado = "";
-    private bool cargando = false;
+    private int añoSeleccionado;
+    private List<int> añosDisponibles = new();
+    private List<ReporteMensual> reporteMensual = new();
+    private bool reporteCargado = false;
+    private int? mesSeleccionado = null;
+    private List<Factura> facturasDelMes = new();
 
-    private async Task CambiarConsulta(ChangeEventArgs e)
+    protected override async Task OnInitializedAsync()
     {
-        var consulta = e.Value?.ToString();
-        if (string.IsNullOrEmpty(consulta)) return;
+        await CargarAñosDisponibles();
+        añoSeleccionado = DateTime.Now.Year;
+    }
 
-        cargando = true;
-        resultado = "";
-        StateHasChanged();
-
-        await Task.Delay(100);
-
-        try
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
         {
-            resultado = consulta switch
+            var añoGuardadoStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "reportes_año_seleccionado");
+
+            if (!string.IsNullOrEmpty(añoGuardadoStr) && int.TryParse(añoGuardadoStr, out int añoGuardado))
             {
-                "total_facturacion" => await TotalFacturacion(),
-                "articulo_mas_vendido" => await ArticuloMasVendido(),
-                "cliente_mayor_gasto" => await ClienteMayorGasto(),
-                "mes_mas_ventas" => await MesMasVentas(),
-                "dia_semana_mas_ventas" => await DiaSemanaConMasVentas(),
-                "evolucion_mensual" => await EvolucionMensual(),
-                "clientes_inactivos" => await ClientesInactivos(),
-                "top_combos" => await TopCombos(),
-                _ => "Consulta no implementada"
-            };
-        }
-        catch (Exception ex)
-        {
-            resultado = $"<span style='color: red;'>Error al procesar la consulta: {ex.Message}</span>";
-        }
-
-        cargando = false;
-        StateHasChanged();
-    }
-
-    private async Task<string> TotalFacturacion()
-    {
-        var facturas = await DbContext.Facturas
-            .Include(f => f.Articulos)
-            .ToListAsync();
-
-        if (!facturas.Any())
-            return "No hay facturas registradas.";
-
-        var total = facturas.Sum(f => f.Articulos.Sum(a => a.Precio));
-        var cantidad = facturas.Count;
-        var promedio = total / cantidad;
-
-        return $"<strong>Facturación total:</strong> ${total:N2}<br/>" +
-               $"<strong>Total de facturas:</strong> {cantidad}<br/>" +
-               $"<strong>Ticket promedio:</strong> ${promedio:N2}";
-    }
-
-    private async Task<string> ArticuloMasVendido()
-    {
-        var articulos = await DbContext.Articulos
-            .GroupBy(a => a.Nombre)
-            .Select(g => new { Nombre = g.Key, Cantidad = g.Count() })
-            .OrderByDescending(x => x.Cantidad)
-            .FirstOrDefaultAsync();
-
-        if (articulos == null)
-            return "No hay datos de artículos vendidos.";
-
-        return $"<strong>{articulos.Nombre}</strong><br/>Vendido <strong>{articulos.Cantidad}</strong> veces";
-    }
-
-    private async Task<string> ClienteMayorGasto()
-    {
-        var facturas = await DbContext.Facturas
-            .Include(f => f.Articulos)
-            .ToListAsync();
-
-        var cliente = facturas
-            .GroupBy(f => f.NombreCliente)
-            .Select(g => new
-            {
-                Cliente = g.Key,
-                Total = g.Sum(f => f.Articulos.Sum(a => a.Precio))
-            })
-            .OrderByDescending(x => x.Total)
-            .FirstOrDefault();
-
-        if (cliente == null)
-            return "No hay datos de clientes.";
-
-        return $"<strong>{cliente.Cliente}</strong><br/>Gasto total: <strong>${cliente.Total:N2}</strong>";
-    }
-
-    private async Task<string> MesMasVentas()
-    {
-        var facturas = await DbContext.Facturas
-            .Include(f => f.Articulos)
-            .ToListAsync();
-
-        var meses = facturas
-            .GroupBy(f => new { f.Fecha.Year, f.Fecha.Month })
-            .Select(g => new
-            {
-                Mes = $"{g.Key.Month}/{g.Key.Year}",
-                Total = g.Sum(f => f.Articulos.Sum(a => a.Precio)),
-                Facturas = g.Count()
-            })
-            .OrderByDescending(x => x.Total)
-            .FirstOrDefault();
-
-        if (meses == null)
-            return "No hay datos de ventas.";
-
-        return $"<strong>{meses.Mes}</strong><br/>Facturación: <strong>${meses.Total:N2}</strong><br/>Facturas: {meses.Facturas}";
-    }
-
-    private async Task<string> DiaSemanaConMasVentas()
-    {
-        var facturas = await DbContext.Facturas.ToListAsync();
-
-        var dias = facturas
-            .GroupBy(f => f.Fecha.DayOfWeek)
-            .Select(g => new
-            {
-                Dia = g.Key,
-                Cantidad = g.Count()
-            })
-            .OrderByDescending(x => x.Cantidad)
-            .ToList();
-
-        if (!dias.Any())
-            return "No hay datos disponibles.";
-
-        var diasEspanol = new Dictionary<DayOfWeek, string>
-        {
-            { DayOfWeek.Monday, "Lunes" },
-            { DayOfWeek.Tuesday, "Martes" },
-            { DayOfWeek.Wednesday, "Miércoles" },
-            { DayOfWeek.Thursday, "Jueves" },
-            { DayOfWeek.Friday, "Viernes" },
-            { DayOfWeek.Saturday, "Sábado" },
-            { DayOfWeek.Sunday, "Domingo" }
-        };
-
-        var html = "<strong>Distribución de ventas por día:</strong><br/><br/>";
-        foreach (var dia in dias)
-        {
-            html += $"• {diasEspanol[dia.Dia]}: <strong>{dia.Cantidad}</strong> facturas<br/>";
-        }
-        return html;
-    }
-
-    private async Task<string> EvolucionMensual()
-    {
-        var facturas = await DbContext.Facturas
-            .Include(f => f.Articulos)
-            .ToListAsync();
-
-        var meses = facturas
-            .GroupBy(f => new { f.Fecha.Year, f.Fecha.Month })
-            .Select(g => new
-            {
-                Mes = $"{g.Key.Month:00}/{g.Key.Year}",
-                Total = g.Sum(f => f.Articulos.Sum(a => a.Precio)),
-                Facturas = g.Count()
-            })
-            .OrderBy(x => x.Mes)
-            .ToList();
-
-        if (!meses.Any())
-            return "No hay datos disponibles.";
-
-        var html = "<strong>Evolución mensual de facturación:</strong><br/><br/>";
-        foreach (var mes in meses)
-        {
-            html += $"• {mes.Mes}: <strong>${mes.Total:N2}</strong> ({mes.Facturas} facturas)<br/>";
-        }
-        return html;
-    }
-
-    private async Task<string> ClientesInactivos()
-    {
-        var fechaLimite = DateTime.Now.AddMonths(-3);
-        var clientes = await DbContext.Facturas
-            .GroupBy(f => f.NombreCliente)
-            .Select(g => new
-            {
-                Cliente = g.Key,
-                UltimaCompra = g.Max(f => f.Fecha)
-            })
-            .Where(x => x.UltimaCompra < fechaLimite)
-            .OrderBy(x => x.UltimaCompra)
-            .ToListAsync();
-
-        if (!clientes.Any())
-            return "¡Excelente! No hay clientes inactivos.";
-
-        var html = $"<strong>Clientes sin compras desde hace 3+ meses:</strong> ({clientes.Count})<br/><br/>";
-        foreach (var cliente in clientes)
-        {
-            var diasInactivo = (DateTime.Now - cliente.UltimaCompra).Days;
-            html += $"• {cliente.Cliente} - Última compra: {cliente.UltimaCompra:dd/MM/yyyy} ({diasInactivo} días)<br/>";
-        }
-        return html;
-    }
-
-    private async Task<string> TopCombos()
-    {
-        var facturas = await DbContext.Facturas
-            .Include(f => f.Articulos)
-            .Where(f => f.Articulos.Count > 1)
-            .ToListAsync();
-
-        if (!facturas.Any())
-            return "No hay facturas con múltiples artículos.";
-
-        var combos = new Dictionary<string, int>();
-
-        foreach (var factura in facturas)
-        {
-            var articulos = factura.Articulos.Select(a => a.Nombre).OrderBy(n => n).ToList();
-            for (int i = 0; i < articulos.Count - 1; i++)
-            {
-                for (int j = i + 1; j < articulos.Count; j++)
+                if (añosDisponibles.Contains(añoGuardado))
                 {
-                    var combo = $"{articulos[i]} + {articulos[j]}";
-                    if (!combos.ContainsKey(combo))
-                        combos[combo] = 0;
-                    combos[combo]++;
+                    añoSeleccionado = añoGuardado;
+                    StateHasChanged();
                 }
             }
         }
-
-        var topCombos = combos
-            .OrderByDescending(x => x.Value)
-            .Take(10)
-            .ToList();
-
-        if (!topCombos.Any())
-            return "No se encontraron combos frecuentes.";
-
-        var html = "<strong>Top 10 combinaciones más frecuentes:</strong><br/><br/>";
-        foreach (var combo in topCombos)
-        {
-            html += $"• {combo.Key}: <strong>{combo.Value}</strong> veces<br/>";
-        }
-        return html;
     }
 
-    private void VolverInicio()
+    private async Task CargarAñosDisponibles()
+    {
+        var facturas = await DbContext.Facturas.ToListAsync();
+
+        if (facturas.Any())
+        {
+            var añoMin = facturas.Min(f => f.Fecha.Year);
+            var añoMax = facturas.Max(f => f.Fecha.Year);
+
+            añosDisponibles = Enumerable.Range(añoMin, añoMax - añoMin + 1)
+                .OrderByDescending(a => a)
+                .ToList();
+        }
+        else
+        {
+            var añoActual = DateTime.Now.Year;
+            añosDisponibles = Enumerable.Range(añoActual - 4, 5)
+                .OrderByDescending(a => a)
+                .ToList();
+        }
+    }
+
+    private async Task OnAñoSeleccionadoChanged()
+    {
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "reportes_año_seleccionado", añoSeleccionado.ToString());
+        await CargarReporte();
+    }
+
+    private async Task CargarReporte()
+    {
+        reporteMensual.Clear();
+        mesSeleccionado = null;
+        facturasDelMes.Clear();
+
+        var facturas = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .Where(f => f.Fecha.Year == añoSeleccionado)
+            .ToListAsync();
+
+        var facturasPorMes = facturas
+            .GroupBy(f => f.Fecha.Month)
+            .OrderBy(g => g.Key)
+            .ToList();
+
+        foreach (var grupo in facturasPorMes)
+        {
+            reporteMensual.Add(new ReporteMensual
+            {
+                NumeroMes = grupo.Key,
+                NombreMes = ObtenerNombreMes(grupo.Key),
+                CantidadFacturas = grupo.Count(),
+                TotalMes = grupo.Sum(f => f.Total)
+            });
+        }
+
+        reporteCargado = true;
+    }
+
+    private async Task MostrarDetallesMes(int mes)
+    {
+        mesSeleccionado = mes;
+        facturasDelMes = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .Where(f => f.Fecha.Year == añoSeleccionado && f.Fecha.Month == mes)
+            .OrderBy(f => f.Fecha)
+            .ToListAsync();
+    }
+
+    private void CerrarDetalleMes()
+    {
+        mesSeleccionado = null;
+        facturasDelMes.Clear();
+    }
+
+    private string ObtenerNombreMes(int mes)
+    {
+        return mes switch
+        {
+            1 => "Enero",
+            2 => "Febrero",
+            3 => "Marzo",
+            4 => "Abril",
+            5 => "Mayo",
+            6 => "Junio",
+            7 => "Julio",
+            8 => "Agosto",
+            9 => "Septiembre",
+            10 => "Octubre",
+            11 => "Noviembre",
+            12 => "Diciembre",
+            _ => "Desconocido"
+        };
+    }
+
+    private void IrAHome()
     {
         Navigation.NavigateTo("/");
+    }
+
+    private void IrAFacturas()
+    {
+        Navigation.NavigateTo("/facturas");
+    }
+
+    private void IrAConsultas()
+    {
+        Navigation.NavigateTo("/consultas");
+    }
+
+    public class ReporteMensual
+    {
+        public int NumeroMes { get; set; }
+        public string NombreMes { get; set; } = "";
+        public int CantidadFacturas { get; set; }
+        public decimal TotalMes { get; set; }
     }
 }
