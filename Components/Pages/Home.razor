@@ -7,74 +7,98 @@
 @inject ProtectedLocalStorage LocalStorage
 @rendermode InteractiveServer
 
-<h1>Sistema de Facturación</h1>
-<h2>Nueva Factura</h2>
-<div>
-    <label>Fecha:</label>
-    <input type="date" @bind="nuevaFactura.Fecha" @bind:after="GuardarEnStorage" min="@fechaMinima.ToString("yyyy-MM-dd")" />
-</div>
+<link rel="stylesheet" href="/css/m3-styles.css" />
 
-<div style="position: relative;">
-    <label>Nombre del Cliente:</label>
-    <input type="text"
-           @bind="nuevaFactura.NombreCliente"
-           @bind:after="GuardarEnStorage"
-           @oninput="BuscarClientes"
-           list="listaClientes"
-           style="width: 300px;" />
-    <datalist id="listaClientes">
-        @foreach (var cliente in clientesFiltrados)
+<div class="m3-container">
+    <h1>Sistema de Facturación</h1>
+
+    <div class="m3-card m3-card-elevated">
+        <h2>Nueva Factura</h2>
+
+        <div class="m3-text-field">
+            <label>Fecha:</label>
+            <input type="date" @bind="nuevaFactura.Fecha" @bind:after="GuardarEnStorage" min="@fechaMinima.ToString("yyyy-MM-dd")" />
+        </div>
+
+        <div class="m3-text-field">
+            <label>👤 Nombre del Cliente:</label>
+            <input type="text"
+                   @bind="nuevaFactura.NombreCliente"
+                   @bind:after="GuardarEnStorage"
+                   @oninput="BuscarClientes"
+                   list="listaClientes"
+                   placeholder="Escribe el nombre del cliente..." />
+            <datalist id="listaClientes">
+                @foreach (var cliente in clientesFiltrados)
+                {
+                    <option value="@cliente" />
+                }
+            </datalist>
+        </div>
+
+        <hr class="m3-divider" />
+
+        <h3>📦 Artículos <span class="m3-chip">@articulosTemp.Count</span></h3>
+
+        @foreach (var art in articulosTemp.Select((a, i) => new { Articulo = a, Index = i }))
         {
-            <option value="@cliente" />
+            <div class="m3-card m3-card-outlined" style="margin: 16px 0;">
+                <h4>Artículo #@(art.Index + 1)</h4>
+
+                <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: end;">
+                    <div class="m3-text-field">
+                        <label>Nombre:</label>
+                        <input type="text"
+                               placeholder="Nombre del artículo"
+                               value="@art.Articulo.Nombre"
+                               @oninput="@(e => BuscarArticulos(art.Articulo, e))"
+                               list="listaArticulos_@art.Index" />
+                        <datalist id="listaArticulos_@art.Index">
+                            @foreach (var articulo in articulosFiltrados)
+                            {
+                                <option value="@articulo.Nombre">$@articulo.Precio.ToString("F2")</option>
+                            }
+                        </datalist>
+                    </div>
+
+                    <div class="m3-text-field">
+                        <label>💵 Precio:</label>
+                        <input type="number" step="0.01" placeholder="0.00" @bind="art.Articulo.Precio" @bind:after="GuardarEnStorage" />
+                    </div>
+
+                    <div class="m3-button-group">
+                        <button class="m3-button m3-button-outlined" @onclick="() => LimpiarArticulo(art.Articulo)">🧹 Limpiar</button>
+                        <button class="m3-button m3-button-error" @onclick="() => EliminarArticulo(art.Articulo)">🗑️ Eliminar</button>
+                    </div>
+                </div>
+            </div>
         }
-    </datalist>
-</div>
 
-<h3>Artículos (Total: @articulosTemp.Count)</h3>
-@foreach (var art in articulosTemp.Select((a, i) => new { Articulo = a, Index = i }))
-{
-    <div style="margin: 10px 0;">
-        <h4>Artículo #@(art.Index + 1)</h4>
-        <input type="text"
-               placeholder="Nombre artículo"
-               value="@art.Articulo.Nombre"
-               @oninput="@(e => BuscarArticulos(art.Articulo, e))"
-               list="listaArticulos_@art.Index"
-               style="width: 200px;" />
-        <datalist id="listaArticulos_@art.Index">
-            @foreach (var articulo in articulosFiltrados)
-            {
-                <option value="@articulo.Nombre">$@articulo.Precio.ToString("F2")</option>
-            }
-        </datalist>
+        <button class="m3-button m3-button-tonal" @onclick="AgregarArticulo">➕ Agregar Artículo</button>
 
-        <b> Precio:</b> <input type="number" step="0.01" placeholder="Precio" @bind="art.Articulo.Precio" @bind:after="GuardarEnStorage" style="width: 100px;" />
-        <button @onclick="() => EliminarArticulo(art.Articulo)">Eliminar</button>
-        <button @onclick="() => LimpiarArticulo(art.Articulo)">Limpiar</button>
+        <hr class="m3-divider" />
+
+        <div class="m3-card" style="background-color: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container);">
+            <h3 style="margin: 0; color: inherit;">💰 Total: $@articulosTemp.Sum(a => a.Precio).ToString("F2")</h3>
+        </div>
+
+        @if (!string.IsNullOrEmpty(mensaje))
+        {
+            <div class="@(mensaje.Contains("exitosamente") ? "m3-message m3-message-success" : "m3-message m3-message-error")">
+                @mensaje
+            </div>
+        }
+
+        <button class="m3-button m3-button-filled" @onclick="GuardarFactura" style="width: 100%; margin-top: 16px;">
+            💾 Guardar Factura
+        </button>
     </div>
-}
-<button @onclick="AgregarArticulo">Agregar Artículo</button>
 
-<div style="margin: 20px 0;">
-    <h4>Total: $@articulosTemp.Sum(a => a.Precio).ToString("F2")</h4>
-</div>
-
-@if (!string.IsNullOrEmpty(mensaje))
-{
-    <p style="color: @(mensaje.Contains("exitosamente") ? "green" : "red"); font-weight: bold;">@mensaje</p>
-}
-
-<button @onclick="GuardarFactura">Guardar Factura</button>
-
-<div style="margin-bottom: 20px;">
-    <button @onclick="IrAFacturas">Ver Facturas Registradas</button>
-</div>
-
-<div style="margin-bottom: 20px;">
-    <button @onclick="IrAReportes">Reportes SAT</button>
-</div>
-<div style="margin-bottom: 20px;">
-    <button @onclick="IrAConsultas">Consultas</button>
+    <div class="m3-button-group" style="margin-top: 24px;">
+        <button class="m3-button m3-button-outlined" @onclick="IrAFacturas">📋 Ver Facturas Registradas</button>
+        <button class="m3-button m3-button-outlined" @onclick="IrAReportes">📊 Reportes SAT</button>
+        <button class="m3-button m3-button-outlined" @onclick="IrAConsultas">🔍 Consultas</button>
+    </div>
 </div>
 
 @code {
@@ -102,7 +126,6 @@
 
     private async Task CargarHistorico()
     {
-        // Cargar clientes únicos
         todosLosClientes = await DbContext.Facturas
             .Where(f => !string.IsNullOrWhiteSpace(f.NombreCliente))
             .Select(f => f.NombreCliente)
@@ -111,7 +134,6 @@
 
         clientesFiltrados = todosLosClientes;
 
-        // Cargar artículos con último precio
         todosLosArticulos = await DbContext.Articulos
             .Where(a => !string.IsNullOrWhiteSpace(a.Nombre))
             .GroupBy(a => a.Nombre)
@@ -160,7 +182,6 @@
                 .ToList();
         }
 
-       
         var coincidencia = todosLosArticulos.FirstOrDefault(a =>
             a.Nombre.Equals(busqueda, StringComparison.OrdinalIgnoreCase));
 
@@ -199,9 +220,7 @@
                 }).ToList();
             }
         }
-        catch
-        {
-        }
+        catch { }
     }
 
     private async Task GuardarEnStorage()
@@ -221,9 +240,7 @@
 
             await LocalStorage.SetAsync("factura_articulos", articulosDto);
         }
-        catch
-        {
-        }
+        catch { }
     }
 
     private async Task LimpiarStorage()
@@ -234,9 +251,7 @@
             await LocalStorage.DeleteAsync("factura_cliente");
             await LocalStorage.DeleteAsync("factura_articulos");
         }
-        catch
-        {
-        }
+        catch { }
     }
 
     private async Task AgregarArticulo()
@@ -254,7 +269,7 @@
         }
         else
         {
-            mensaje = "No se puede eliminar articulo 1, debe de tener al menos un artículo para facturar";
+            mensaje = "No se puede eliminar artículo 1, debe tener al menos un artículo para facturar";
         }
     }
 
@@ -295,26 +310,17 @@
         await DbContext.SaveChangesAsync();
         mensaje = "Factura guardada exitosamente";
 
-        await CargarHistorico(); // Actualizar listas
+        await CargarHistorico();
         await LimpiarStorage();
 
         nuevaFactura = new() { Fecha = DateTime.Now };
         articulosTemp = new() { new Articulo() };
     }
 
-    private void IrAFacturas()
-    {
-        Navigation.NavigateTo("/facturas");
-    }
+    private void IrAFacturas() => Navigation.NavigateTo("/facturas");
+    private void IrAReportes() => Navigation.NavigateTo("/reportes");
+    private void IrAConsultas() => Navigation.NavigateTo("/consultas");
 
-    private void IrAReportes()
-    {
-        Navigation.NavigateTo("/reportes");
-    }
-    private void IrAConsultas()
-    {
-        Navigation.NavigateTo("/consultas");
-    }
     private class ArticuloDto
     {
         public string Nombre { get; set; } = "";
