@@ -10,49 +10,84 @@
 @rendermode InteractiveServer
 @implements IDisposable
 
-<h1>Facturas Registradas</h1>
+<link rel="stylesheet" href="/css/m3-styles.css" />
 
-<div style="margin-bottom: 20px;">
-    <button @onclick="IrAHome">← Volver a Nueva Factura</button>
+<div class="m3-container">
+    <h1>📋 Facturas Registradas</h1>
+
+    <div class="m3-button-group">
+        <button class="m3-button m3-button-outlined" @onclick="IrAHome">← Volver a Nueva Factura</button>
+        <button class="m3-button m3-button-outlined" @onclick="IrAReportes">📊 Ver Reportes</button>
+        <button class="m3-button m3-button-outlined" @onclick="IrAConsultas">🔍 Ver Consultas</button>
+    </div>
+
+    @if (facturas == null)
+    {
+        <div class="m3-card" style="text-align: center; padding: 48px;">
+            <p style="color: var(--md-sys-color-on-surface-variant);">Cargando facturas...</p>
+        </div>
+    }
+    else if (!facturas.Any())
+    {
+        <div class="m3-card m3-card-elevated" style="text-align: center; padding: 48px;">
+            <h3>No hay facturas registradas</h3>
+            <p style="color: var(--md-sys-color-on-surface-variant); margin: 16px 0;">
+                Comienza creando tu primera factura
+            </p>
+            <button class="m3-button m3-button-filled" @onclick="IrAHome" style="margin-top: 16px;">
+                ➕ Crear Nueva Factura
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="m3-card m3-card-elevated" style="padding: 0; overflow: hidden;">
+            <div style="padding: 24px; background-color: var(--md-sys-color-surface-container-high);">
+                <h2 style="margin: 0;">Total de facturas: <span class="m3-chip">@facturas.Count</span></h2>
+            </div>
+
+            <table class="m3-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th style="text-align: right;">Total</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in facturas)
+                    {
+                        <tr>
+                            <td><strong>#@f.Id</strong></td>
+                            <td>@f.Fecha.ToString("dd/MM/yyyy")</td>
+                            <td>@f.NombreCliente</td>
+                            <td style="text-align: right;"><strong>$@f.Total.ToString("F2")</strong></td>
+                            <td style="text-align: center;">
+                                <div class="m3-button-group" style="justify-content: center;">
+                                    <button class="m3-button m3-button-tonal" @onclick="() => VerDetalle(f.Id)">
+                                        👁️ Ver
+                                    </button>
+                                    <button class="m3-button m3-button-error" @onclick="() => EliminarFactura(f.Id)">
+                                        🗑️ Eliminar
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3"><strong>TOTAL GENERAL</strong></td>
+                        <td style="text-align: right;"><strong>$@facturas.Sum(f => f.Total).ToString("F2")</strong></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    }
 </div>
-
-@if (facturas == null)
-{
-    <p>Cargando...</p>
-}
-else if (!facturas.Any())
-{
-    <p>No hay facturas registradas</p>
-}
-else
-{
-    <table border="1" cellpadding="10" cellspacing="0">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Fecha</th>
-                <th>Cliente</th>
-                <th>Total</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var f in facturas)
-            {
-                <tr>
-                    <td>@f.Id</td>
-                    <td>@f.Fecha.ToShortDateString()</td>
-                    <td>@f.NombreCliente</td>
-                    <td>$@f.Total.ToString("F2")</td>
-                    <td>
-                        <button @onclick="() => VerDetalle(f.Id)">Ver Detalle</button>
-                        <button @onclick="() => EliminarFactura(f.Id)">Eliminar</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
 
 @code {
     private List<Factura>? facturas;
@@ -81,18 +116,19 @@ else
 
     private async Task VerDetalle(int id)
     {
-        // Generar token de navegación autorizada
         var token = NavService.GenerarTokenNavegacion(id);
-
-        // Guardar en sessionStorage de forma SÍNCRONA usando eval
         await JS.InvokeVoidAsync("eval", $"sessionStorage.setItem('factura_token_{id}', '{token}')");
-
-        // Navegar
         Navigation.NavigateTo($"/factura/{id}?token={token}");
     }
 
     private async Task EliminarFactura(int id)
     {
+        bool confirmar = await JS.InvokeAsync<bool>("confirm",
+            $"¿Estás seguro de que deseas eliminar la factura #{id}?");
+
+        if (!confirmar)
+            return;
+
         var factura = await DbContext.Facturas
             .Include(f => f.Articulos)
             .FirstOrDefaultAsync(f => f.Id == id);
@@ -111,10 +147,19 @@ else
         Navigation.NavigateTo("/");
     }
 
+    private void IrAReportes()
+    {
+        Navigation.NavigateTo("/reportes");
+    }
+
+    private void IrAConsultas()
+    {
+        Navigation.NavigateTo("/consultas");
+    }
+
     private async Task BloquearBotonesNavegador()
     {
         await JS.InvokeVoidAsync("eval", @"
-            // Bloquear botones atrás y adelante
             history.pushState(null, null, location.href);
             window.onpopstate = function() {
                 history.pushState(null, null, location.href);
@@ -130,14 +175,10 @@ else
                 window.onpopstate = null;
             ");
         }
-        catch
-        {
-   
-        }
+        catch { }
     }
 
     public void Dispose()
     {
-      
     }
 }
