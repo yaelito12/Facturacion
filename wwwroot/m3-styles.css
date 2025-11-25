@@ -269,5 +269,41 @@ h4 {
 .m3-card-elevated {
     box-shadow: var(--md-sys-elevation-2);
 }
+/* Tablas */
+.m3-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--md-sys-color-surface-container);
+    border-radius: var(--md-sys-shape-corner-medium);
+    overflow: hidden;
+    box-shadow: var(--md-sys-elevation-1);
+}
+
+    .m3-table thead {
+        background-color: var(--md-sys-color-surface-container-high);
+    }
+
+    .m3-table th {
+        padding: 16px;
+        text-align: left;
+        font-weight: 500;
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: var(--md-sys-typescale-title-medium);
+    }
+
+    .m3-table td {
+        padding: 16px;
+        border-top: 1px solid var(--md-sys-color-outline-variant);
+        color: var(--md-sys-color-on-surface);
+    }
+
+    .m3-table tbody tr:hover {
+        background-color: var(--md-sys-color-surface-container-highest);
+    }
+
+    .m3-table tfoot {
+        background-color: var(--md-sys-color-surface-container-high);
+        font-weight: 500;
+    }
 
 }
