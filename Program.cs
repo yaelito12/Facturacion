@@ -4,7 +4,7 @@ using Facturacion.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.Services.AddScoped<ArchivoService>();
 // Registrar el servicio como Scoped (por sesión de usuario)
 builder.Services.AddScoped<FacturaNavigationService>();
 
