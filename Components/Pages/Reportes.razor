@@ -1,9 +1,10 @@
 ﻿@page "/reportes"
 @using Facturacion.Data
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @inject FacturacionDbContext DbContext
 @inject NavigationManager Navigation
-@inject IJSRuntime JSRuntime
+@inject ProtectedSessionStorage SessionStorage
 @rendermode InteractiveServer
 
 <link rel="stylesheet" href="/css/m3-styles.css" />
@@ -220,38 +221,42 @@
     {
         if (firstRender)
         {
-            var estadoRestaurado = false;
-
-            // Restaurar año seleccionado
-            var añoGuardadoStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "reportes_año_seleccionado");
-            if (!string.IsNullOrEmpty(añoGuardadoStr) && int.TryParse(añoGuardadoStr, out int añoGuardado))
+            try
             {
-                if (añosDisponibles.Contains(añoGuardado))
+                // Restaurar año seleccionado
+                var añoResult = await SessionStorage.GetAsync<int>("reportes_año_seleccionado");
+                if (añoResult.Success && añosDisponibles.Contains(añoResult.Value))
                 {
-                    añoSeleccionado = añoGuardado;
-                    await CargarReporte();
-                    estadoRestaurado = true;
-                }
-            }
+                    añoSeleccionado = añoResult.Value;
 
-            // Restaurar mes seleccionado (solo si hay año)
-            if (estadoRestaurado)
-            {
-                var mesGuardadoStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "reportes_mes_seleccionado");
-                if (!string.IsNullOrEmpty(mesGuardadoStr) && int.TryParse(mesGuardadoStr, out int mesGuardado))
-                {
-                    await MostrarDetallesMes(mesGuardado);
+                    // Cargar el reporte del año
+                    await CargarReporteSinLimpiar();
 
-                    // Restaurar factura seleccionada (solo si hay mes)
-                    var facturaGuardadaStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "reportes_factura_seleccionada");
-                    if (!string.IsNullOrEmpty(facturaGuardadaStr) && int.TryParse(facturaGuardadaStr, out int facturaGuardada))
+                    // Restaurar mes seleccionado (solo si hay año)
+                    var mesResult = await SessionStorage.GetAsync<int>("reportes_mes_seleccionado");
+                    if (mesResult.Success)
                     {
-                        await MostrarArticulosFactura(facturaGuardada);
+                        // Cargar las facturas del mes
+                        await CargarFacturasMes(mesResult.Value);
+
+                        // Restaurar factura seleccionada (solo si hay mes y facturas)
+                        if (facturasDelMes.Any())
+                        {
+                            var facturaResult = await SessionStorage.GetAsync<int>("reportes_factura_seleccionada");
+                            if (facturaResult.Success)
+                            {
+                                await MostrarArticulosFactura(facturaResult.Value);
+                            }
+                        }
                     }
+
+                    StateHasChanged();
                 }
             }
-
-            StateHasChanged();
+            catch
+            {
+             
+            }
         }
     }
 
@@ -261,7 +266,6 @@
 
         if (facturas.Any())
         {
-            // Obtener solo los años que tienen facturas
             añosDisponibles = facturas
                 .Select(f => f.Fecha.Year)
                 .Distinct()
@@ -270,14 +274,13 @@
         }
         else
         {
-            // No hay facturas, lista vacía
             añosDisponibles = new List<int>();
         }
     }
 
     private async Task OnAñoSeleccionadoChanged()
     {
-        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "reportes_año_seleccionado", añoSeleccionado.ToString());
+        await SessionStorage.SetAsync("reportes_año_seleccionado", añoSeleccionado);
         await CargarReporte();
     }
 
@@ -286,7 +289,18 @@
         reporteMensual.Clear();
         mesSeleccionado = null;
         facturasDelMes.Clear();
+        facturaSeleccionada = null;
+        articulosFactura.Clear();
 
+        await CargarReporteSinLimpiar();
+
+       
+        await SessionStorage.DeleteAsync("reportes_mes_seleccionado");
+        await SessionStorage.DeleteAsync("reportes_factura_seleccionada");
+    }
+
+    private async Task CargarReporteSinLimpiar()
+    {
         var facturas = await DbContext.Facturas
             .Include(f => f.Articulos)
             .Where(f => f.Fecha.Year == añoSeleccionado)
@@ -297,6 +311,7 @@
             .OrderBy(g => g.Key)
             .ToList();
 
+        reporteMensual.Clear();
         foreach (var grupo in facturasPorMes)
         {
             reporteMensual.Add(new ReporteMensual
@@ -309,13 +324,9 @@
         }
 
         reporteCargado = true;
-
-        // Limpiar mes y factura guardados cuando se carga un nuevo reporte
-        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "reportes_mes_seleccionado");
-        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "reportes_factura_seleccionada");
     }
 
-    private async Task MostrarDetallesMes(int mes)
+    private async Task CargarFacturasMes(int mes)
     {
         mesSeleccionado = mes;
         facturaSeleccionada = null;
@@ -326,9 +337,12 @@
             .Where(f => f.Fecha.Year == añoSeleccionado && f.Fecha.Month == mes)
             .OrderBy(f => f.Fecha)
             .ToListAsync();
+    }
 
-        // Guardar mes seleccionado en localStorage
-        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "reportes_mes_seleccionado", mes.ToString());
+    private async Task MostrarDetallesMes(int mes)
+    {
+        await CargarFacturasMes(mes);
+        await SessionStorage.SetAsync("reportes_mes_seleccionado", mes);
     }
 
     private async Task MostrarArticulosFactura(int facturaId)
@@ -337,9 +351,7 @@
         if (facturaSeleccionada != null)
         {
             articulosFactura = facturaSeleccionada.Articulos.ToList();
-
-            // Guardar factura seleccionada en localStorage
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "reportes_factura_seleccionada", facturaId.ToString());
+            await SessionStorage.SetAsync("reportes_factura_seleccionada", facturaId);
         }
     }
 
@@ -347,9 +359,7 @@
     {
         facturaSeleccionada = null;
         articulosFactura.Clear();
-
-        // Limpiar factura guardada en localStorage
-        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "reportes_factura_seleccionada");
+        await SessionStorage.DeleteAsync("reportes_factura_seleccionada");
     }
 
     private async Task CerrarDetalleMes()
@@ -359,9 +369,8 @@
         facturaSeleccionada = null;
         articulosFactura.Clear();
 
-        // Limpiar mes y factura guardados en localStorage
-        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "reportes_mes_seleccionado");
-        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "reportes_factura_seleccionada");
+        await SessionStorage.DeleteAsync("reportes_mes_seleccionado");
+        await SessionStorage.DeleteAsync("reportes_factura_seleccionada");
     }
 
     private string ObtenerNombreMes(int mes)

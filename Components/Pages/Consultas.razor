@@ -1,8 +1,10 @@
 ﻿@page "/consultas"
 @using Facturacion.Data
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @inject FacturacionDbContext DbContext
 @inject NavigationManager Navigation
+@inject ProtectedSessionStorage SessionStorage
 @rendermode InteractiveServer
 
 
@@ -21,7 +23,7 @@
     <div class="m3-card m3-card-elevated">
         <h3>Selecciona una consulta:</h3>
         <div class="m3-text-field">
-            <select @onchange="CambiarConsulta">
+            <select @bind="consultaSeleccionada" @bind:after="OnConsultaSeleccionadaChanged">
                 <option value="">-- Selecciona una consulta --</option>
                 <option value="total_facturacion">📈 Resumen General de Facturación</option>
                 <option value="articulo_mas_vendido">📦 Artículo Más Vendido</option>
@@ -56,13 +58,48 @@
 </div>
 
 @code {
+    private string consultaSeleccionada = "";
     private string resultado = "";
     private bool cargando = false;
 
-    private async Task CambiarConsulta(ChangeEventArgs e)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var consulta = e.Value?.ToString();
-        if (string.IsNullOrEmpty(consulta)) return;
+        if (firstRender)
+        {
+            try
+            {
+                // Restaurar consulta seleccionada
+                var consultaResult = await SessionStorage.GetAsync<string>("consultas_tipo_seleccionado");
+                if (consultaResult.Success && !string.IsNullOrEmpty(consultaResult.Value))
+                {
+                    consultaSeleccionada = consultaResult.Value;
+                    await EjecutarConsulta();
+                    StateHasChanged();
+                }
+            }
+            catch
+            {
+                // Si hay algún error al restaurar, simplemente ignoramos y continuamos
+            }
+        }
+    }
+
+    private async Task OnConsultaSeleccionadaChanged()
+    {
+        if (string.IsNullOrEmpty(consultaSeleccionada))
+        {
+            await SessionStorage.DeleteAsync("consultas_tipo_seleccionado");
+            resultado = "";
+            return;
+        }
+
+        await SessionStorage.SetAsync("consultas_tipo_seleccionado", consultaSeleccionada);
+        await EjecutarConsulta();
+    }
+
+    private async Task EjecutarConsulta()
+    {
+        if (string.IsNullOrEmpty(consultaSeleccionada)) return;
 
         cargando = true;
         resultado = "";
@@ -72,7 +109,7 @@
 
         try
         {
-            resultado = consulta switch
+            resultado = consultaSeleccionada switch
             {
                 "total_facturacion" => await TotalFacturacion(),
                 "articulo_mas_vendido" => await ArticuloMasVendido(),
