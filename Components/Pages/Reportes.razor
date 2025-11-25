@@ -220,16 +220,38 @@
     {
         if (firstRender)
         {
-            var añoGuardadoStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "reportes_año_seleccionado");
+            var estadoRestaurado = false;
 
+            // Restaurar año seleccionado
+            var añoGuardadoStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "reportes_año_seleccionado");
             if (!string.IsNullOrEmpty(añoGuardadoStr) && int.TryParse(añoGuardadoStr, out int añoGuardado))
             {
                 if (añosDisponibles.Contains(añoGuardado))
                 {
                     añoSeleccionado = añoGuardado;
-                    StateHasChanged();
+                    await CargarReporte();
+                    estadoRestaurado = true;
                 }
             }
+
+            // Restaurar mes seleccionado (solo si hay año)
+            if (estadoRestaurado)
+            {
+                var mesGuardadoStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "reportes_mes_seleccionado");
+                if (!string.IsNullOrEmpty(mesGuardadoStr) && int.TryParse(mesGuardadoStr, out int mesGuardado))
+                {
+                    await MostrarDetallesMes(mesGuardado);
+
+                    // Restaurar factura seleccionada (solo si hay mes)
+                    var facturaGuardadaStr = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "reportes_factura_seleccionada");
+                    if (!string.IsNullOrEmpty(facturaGuardadaStr) && int.TryParse(facturaGuardadaStr, out int facturaGuardada))
+                    {
+                        await MostrarArticulosFactura(facturaGuardada);
+                    }
+                }
+            }
+
+            StateHasChanged();
         }
     }
 
@@ -287,6 +309,10 @@
         }
 
         reporteCargado = true;
+
+        // Limpiar mes y factura guardados cuando se carga un nuevo reporte
+        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "reportes_mes_seleccionado");
+        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "reportes_factura_seleccionada");
     }
 
     private async Task MostrarDetallesMes(int mes)
@@ -300,29 +326,42 @@
             .Where(f => f.Fecha.Year == añoSeleccionado && f.Fecha.Month == mes)
             .OrderBy(f => f.Fecha)
             .ToListAsync();
+
+        // Guardar mes seleccionado en localStorage
+        await JSRuntime.InvokeVoidAsync("localStorage.setItem", "reportes_mes_seleccionado", mes.ToString());
     }
 
-    private void MostrarArticulosFactura(int facturaId)
+    private async Task MostrarArticulosFactura(int facturaId)
     {
         facturaSeleccionada = facturasDelMes.FirstOrDefault(f => f.Id == facturaId);
         if (facturaSeleccionada != null)
         {
             articulosFactura = facturaSeleccionada.Articulos.ToList();
+
+            // Guardar factura seleccionada en localStorage
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "reportes_factura_seleccionada", facturaId.ToString());
         }
     }
 
-    private void CerrarArticulosFactura()
+    private async Task CerrarArticulosFactura()
     {
         facturaSeleccionada = null;
         articulosFactura.Clear();
+
+        // Limpiar factura guardada en localStorage
+        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "reportes_factura_seleccionada");
     }
 
-    private void CerrarDetalleMes()
+    private async Task CerrarDetalleMes()
     {
         mesSeleccionado = null;
         facturasDelMes.Clear();
         facturaSeleccionada = null;
         articulosFactura.Clear();
+
+        // Limpiar mes y factura guardados en localStorage
+        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "reportes_mes_seleccionado");
+        await JSRuntime.InvokeVoidAsync("localStorage.removeItem", "reportes_factura_seleccionada");
     }
 
     private string ObtenerNombreMes(int mes)
