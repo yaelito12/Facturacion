@@ -397,4 +397,58 @@ h4 {
     .m3-list-item:last-child {
         border-bottom: none;
     }
+/* Utilidades */
+.m3-surface-1 {
+    background-color: var(--md-sys-color-surface-container-low);
+}
+
+.m3-surface-2 {
+    background-color: var(--md-sys-color-surface-container);
+}
+
+.m3-surface-3 {
+    background-color: var(--md-sys-color-surface-container-high);
+}
+
+/* Espaciado */
+.m3-spacing-small {
+    margin: 8px;
+}
+
+.m3-spacing-medium {
+    margin: 16px;
+}
+
+.m3-spacing-large {
+    margin: 24px;
+}
+
+.m3-padding-small {
+    padding: 8px;
+}
+
+.m3-padding-medium {
+    padding: 16px;
+}
+
+.m3-padding-large {
+    padding: 24px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .m3-container {
+        padding: 16px;
+    }
+
+    .m3-table {
+        font-size: var(--md-sys-typescale-body-small);
+    }
+
+        .m3-table th,
+        .m3-table td {
+            padding: 12px 8px;
+        }
+}
+
 }
