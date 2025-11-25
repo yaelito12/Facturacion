@@ -126,4 +126,91 @@ h4 {
     margin-bottom: 8px;
     color: var(--md-sys-color-on-surface-variant);
 }
+
+/* Botones */
+.m3-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 24px;
+    border: none;
+    border-radius: var(--md-sys-shape-corner-extra-large);
+    font-size: var(--md-sys-typescale-label-large);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+    position: relative;
+    overflow: hidden;
+    font-family: inherit;
+}
+
+    .m3-button::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0;
+        transform: translate(-50%, -50%);
+        transition: width 0.3s, height 0.3s, opacity 0.3s;
+    }
+
+    .m3-button:hover::before {
+        width: 100%;
+        height: 100%;
+        opacity: 0.08;
+    }
+
+    .m3-button:active {
+        transform: scale(0.98);
+    }
+
+/* Botón Filled */
+.m3-button-filled {
+    background-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    box-shadow: var(--md-sys-elevation-1);
+}
+
+    .m3-button-filled:hover {
+        box-shadow: var(--md-sys-elevation-2);
+    }
+
+/* Botón Outlined */
+.m3-button-outlined {
+    background-color: transparent;
+    color: var(--md-sys-color-primary);
+    border: 1px solid var(--md-sys-color-outline);
+}
+
+/* Botón Text */
+.m3-button-text {
+    background-color: transparent;
+    color: var(--md-sys-color-primary);
+    padding: 10px 12px;
+}
+
+/* Botón Tonal */
+.m3-button-tonal {
+    background-color: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+}
+
+/* Botón Error */
+.m3-button-error {
+    background-color: var(--md-sys-color-error);
+    color: var(--md-sys-color-on-error);
+}
+
+/* Grid de Botones */
+.m3-button-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 16px 0;
+}
 }
