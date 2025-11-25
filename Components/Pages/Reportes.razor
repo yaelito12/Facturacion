@@ -19,20 +19,29 @@
 
     <div class="m3-card m3-card-elevated">
         <h3>Seleccionar Año</h3>
-        <div style="display: flex; gap: 12px; align-items: end;">
-            <div class="m3-text-field" style="flex: 1;">
-                <label>Año:</label>
-                <select @bind="añoSeleccionado" @bind:after="OnAñoSeleccionadoChanged">
-                    @foreach (var año in añosDisponibles)
-                    {
-                        <option value="@año">@año</option>
-                    }
-                </select>
+        @if (!añosDisponibles.Any())
+        {
+            <div class="m3-message m3-message-error">
+                <strong>No hay facturas registradas en el sistema</strong>
             </div>
-            <button class="m3-button m3-button-filled" @onclick="CargarReporte">
-                📈 Mostrar Reporte
-            </button>
-        </div>
+        }
+        else
+        {
+            <div style="display: flex; gap: 12px; align-items: end;">
+                <div class="m3-text-field" style="flex: 1;">
+                    <label>Año:</label>
+                    <select @bind="añoSeleccionado" @bind:after="OnAñoSeleccionadoChanged">
+                        @foreach (var año in añosDisponibles)
+                        {
+                            <option value="@año">@año</option>
+                        }
+                    </select>
+                </div>
+                <button class="m3-button m3-button-filled" @onclick="CargarReporte">
+                    📈 Mostrar Reporte
+                </button>
+            </div>
+        }
     </div>
 
     @if (reporteCargado)
@@ -109,6 +118,7 @@
                                     <th>Fecha</th>
                                     <th>Cliente</th>
                                     <th style="text-align: right;">Total</th>
+                                    <th style="text-align: center;">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -119,12 +129,17 @@
                                         <td>@factura.Fecha.ToString("dd/MM/yyyy")</td>
                                         <td>@factura.NombreCliente</td>
                                         <td style="text-align: right;"><strong>$@factura.Total.ToString("N2")</strong></td>
+                                        <td style="text-align: center;">
+                                            <button class="m3-button m3-button-tonal" @onclick="() => MostrarArticulosFactura(factura.Id)">
+                                                📦 Ver Artículos
+                                            </button>
+                                        </td>
                                     </tr>
                                 }
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <td colspan="3"><strong>TOTAL DEL MES</strong></td>
+                                    <td colspan="4"><strong>TOTAL DEL MES</strong></td>
                                     <td style="text-align: right;">
                                         <strong>$@facturasDelMes.Sum(f => f.Total).ToString("N2")</strong>
                                     </td>
@@ -133,6 +148,46 @@
                         </table>
                     </div>
                 </div>
+
+                @if (facturaSeleccionada != null && articulosFactura.Any())
+                {
+                    <div class="m3-card m3-card-elevated">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h3 style="margin: 0;">Artículos de la Factura #@facturaSeleccionada.Id</h3>
+                            <button class="m3-button m3-button-outlined" @onclick="CerrarArticulosFactura">
+                                ✕ Cerrar
+                            </button>
+                        </div>
+
+                        <div style="padding: 0; overflow: hidden; border-radius: var(--md-sys-shape-corner-medium);">
+                            <table class="m3-table">
+                                <thead>
+                                    <tr>
+                                        <th>Artículo</th>
+                                        <th style="text-align: right;">Precio</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var articulo in articulosFactura)
+                                    {
+                                        <tr>
+                                            <td><strong>@articulo.Nombre</strong></td>
+                                            <td style="text-align: right;">$@articulo.Precio.ToString("N2")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td><strong>TOTAL</strong></td>
+                                        <td style="text-align: right;">
+                                            <strong>$@articulosFactura.Sum(a => a.Precio).ToString("N2")</strong>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                }
             }
         }
     }
@@ -145,11 +200,20 @@
     private bool reporteCargado = false;
     private int? mesSeleccionado = null;
     private List<Factura> facturasDelMes = new();
+    private Factura? facturaSeleccionada = null;
+    private List<Articulo> articulosFactura = new();
 
     protected override async Task OnInitializedAsync()
     {
         await CargarAñosDisponibles();
-        añoSeleccionado = DateTime.Now.Year;
+
+        // Solo asignar año actual si hay años disponibles
+        if (añosDisponibles.Any())
+        {
+            añoSeleccionado = añosDisponibles.Contains(DateTime.Now.Year)
+                ? DateTime.Now.Year
+                : añosDisponibles.First();
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -175,19 +239,17 @@
 
         if (facturas.Any())
         {
-            var añoMin = facturas.Min(f => f.Fecha.Year);
-            var añoMax = facturas.Max(f => f.Fecha.Year);
-
-            añosDisponibles = Enumerable.Range(añoMin, añoMax - añoMin + 1)
+            // Obtener solo los años que tienen facturas
+            añosDisponibles = facturas
+                .Select(f => f.Fecha.Year)
+                .Distinct()
                 .OrderByDescending(a => a)
                 .ToList();
         }
         else
         {
-            var añoActual = DateTime.Now.Year;
-            añosDisponibles = Enumerable.Range(añoActual - 4, 5)
-                .OrderByDescending(a => a)
-                .ToList();
+            // No hay facturas, lista vacía
+            añosDisponibles = new List<int>();
         }
     }
 
@@ -230,6 +292,9 @@
     private async Task MostrarDetallesMes(int mes)
     {
         mesSeleccionado = mes;
+        facturaSeleccionada = null;
+        articulosFactura.Clear();
+
         facturasDelMes = await DbContext.Facturas
             .Include(f => f.Articulos)
             .Where(f => f.Fecha.Year == añoSeleccionado && f.Fecha.Month == mes)
@@ -237,10 +302,27 @@
             .ToListAsync();
     }
 
+    private void MostrarArticulosFactura(int facturaId)
+    {
+        facturaSeleccionada = facturasDelMes.FirstOrDefault(f => f.Id == facturaId);
+        if (facturaSeleccionada != null)
+        {
+            articulosFactura = facturaSeleccionada.Articulos.ToList();
+        }
+    }
+
+    private void CerrarArticulosFactura()
+    {
+        facturaSeleccionada = null;
+        articulosFactura.Clear();
+    }
+
     private void CerrarDetalleMes()
     {
         mesSeleccionado = null;
         facturasDelMes.Clear();
+        facturaSeleccionada = null;
+        articulosFactura.Clear();
     }
 
     private string ObtenerNombreMes(int mes)
