@@ -19,7 +19,7 @@ public class Factura
     public DateTime Fecha { get; set; }
     public string NombreCliente { get; set; } = string.Empty;
     public List<Articulo> Articulos { get; set; } = new();
-    public bool Archivada { get; set; } = false;
+    public bool Archivada { get; set; } = false;  // <-- Comentada temporalmente
     public decimal Total => Articulos?.Sum(a => a.Precio) ?? 0;
 }
 
