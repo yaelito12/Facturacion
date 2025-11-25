@@ -306,4 +306,52 @@ h4 {
         font-weight: 500;
     }
 
+/* Chips */
+.m3-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: var(--md-sys-shape-corner-small);
+    background-color: var(--md-sys-color-surface-container-high);
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: var(--md-sys-typescale-label-large);
+    font-weight: 500;
+    border: 1px solid var(--md-sys-color-outline);
+}
+
+/* Mensajes */
+.m3-message {
+    padding: 16px;
+    border-radius: var(--md-sys-shape-corner-small);
+    margin: 16px 0;
+    font-size: var(--md-sys-typescale-body-medium);
+}
+
+.m3-message-success {
+    background-color: #D1F4E0;
+    color: #0D5D2D;
+    border-left: 4px solid #0D5D2D;
+}
+
+.m3-message-error {
+    background-color: var(--md-sys-color-error-container);
+    color: var(--md-sys-color-on-error-container);
+    border-left: 4px solid var(--md-sys-color-error);
+}
+
+.m3-message-info {
+    background-color: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+    border-left: 4px solid var(--md-sys-color-primary);
+}
+
+/* Divisores */
+.m3-divider {
+    height: 1px;
+    background-color: var(--md-sys-color-outline-variant);
+    margin: 16px 0;
+    border: none;
+}
+
 }
