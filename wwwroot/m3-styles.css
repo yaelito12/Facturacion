@@ -213,4 +213,37 @@ h4 {
     flex-wrap: wrap;
     margin: 16px 0;
 }
+.m3-text-field {
+    position: relative;
+    margin-bottom: 16px;
+}
+
+    .m3-text-field label {
+        display: block;
+        font-size: var(--md-sys-typescale-body-small);
+        color: var(--md-sys-color-on-surface-variant);
+        margin-bottom: 4px;
+        font-weight: 500;
+    }
+
+    .m3-text-field input,
+    .m3-text-field select {
+        width: 100%;
+        padding: 16px;
+        border: 1px solid var(--md-sys-color-outline);
+        border-radius: var(--md-sys-shape-corner-extra-small);
+        background-color: var(--md-sys-color-surface-container-highest);
+        color: var(--md-sys-color-on-surface);
+        font-size: var(--md-sys-typescale-body-large);
+        font-family: inherit;
+        transition: all 0.2s;
+    }
+
+        .m3-text-field input:focus,
+        .m3-text-field select:focus {
+            outline: 2px solid var(--md-sys-color-primary);
+            outline-offset: -1px;
+            border-color: var(--md-sys-color-primary);
+        }
+
 }
