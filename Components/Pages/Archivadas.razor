@@ -1,5 +1,97 @@
-﻿<h3>Archivadas</h3>
+﻿@page "/archivadas"
+@using Facturacion.Data
+@using Facturacion.Services
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.JSInterop
+@inject FacturacionDbContext DbContext
+@inject NavigationManager Navigation
+@inject ArchivoService ArchivoService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<div class="m3-container">
+    @if (!autenticado)
+    {
+        <div class="m3-card m3-card-elevated" style="max-width: 500px; margin: 48px auto;">
+            <h1 style="text-align: center;">🔒 Facturas Archivadas</h1>
+            <p style="text-align: center; color: var(--md-sys-color-on-surface-variant); margin: 24px 0;">
+                Ingresa la contraseña para acceder a las facturas archivadas
+            </p>
+
+            <div class="m3-text-field">
+                <label>Contraseña:</label>
+                <input type="password"
+                       @bind="contraseñaIngresada"
+                       @onkeypress="OnKeyPress"
+                       placeholder="Ingresa la contraseña"
+                       autofocus />
+            </div>
+
+            @if (!string.IsNullOrEmpty(mensajeError))
+            {
+                <div class="m3-message m3-message-error">
+                    @mensajeError
+                </div>
+            }
+
+            <div class="m3-button-group" style="margin-top: 24px;">
+                <button class="m3-button m3-button-filled" @onclick="ValidarContraseña" style="flex: 1;">
+                    ✓ Ingresar
+                </button>
+                <button class="m3-button m3-button-outlined" @onclick="Volver">
+                    ← Volver
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <h1>📦 Facturas Archivadas</h1>
+        <div class="m3-button-group">
+            <button class="m3-button m3-button-outlined" @onclick="Volver">
+                ← Volver al Inicio
+            </button>
+        </div>
+        <p>Contenido autenticado (próximamente)</p>
+    }
+</div>
 
 @code {
+    private bool autenticado = false;
+    private string contraseñaIngresada = "";
+    private string mensajeError = "";
 
+    private async Task OnKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ValidarContraseña();
+        }
+    }
+
+    private async Task ValidarContraseña()
+    {
+        mensajeError = "";
+
+        if (string.IsNullOrWhiteSpace(contraseñaIngresada))
+        {
+            mensajeError = "Por favor ingresa la contraseña";
+            return;
+        }
+
+        if (ArchivoService.ValidarContraseña(contraseñaIngresada))
+        {
+            autenticado = true;
+        }
+        else
+        {
+            mensajeError = "Contraseña incorrecta";
+            contraseñaIngresada = "";
+        }
+    }
+
+    private void Volver()
+    {
+        Navigation.NavigateTo("/");
+    }
 }
