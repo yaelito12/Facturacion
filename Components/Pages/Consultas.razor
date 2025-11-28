@@ -135,6 +135,7 @@
     {
         var facturas = await DbContext.Facturas
             .Include(f => f.Articulos)
+            .Where(f => !f.Archivada) // ✅ YA LO TIENES
             .ToListAsync();
 
         if (!facturas.Any())
@@ -151,7 +152,9 @@
 
     private async Task<string> ArticuloMasVendido()
     {
+      
         var articulos = await DbContext.Articulos
+            .Where(a => !DbContext.Facturas.Any(f => f.Id == a.FacturaId && f.Archivada)) 
             .GroupBy(a => a.Nombre)
             .Select(g => new { Nombre = g.Key, Cantidad = g.Count() })
             .OrderByDescending(x => x.Cantidad)
@@ -165,8 +168,10 @@
 
     private async Task<string> ClienteMayorGasto()
     {
+    
         var facturas = await DbContext.Facturas
             .Include(f => f.Articulos)
+            .Where(f => !f.Archivada) 
             .ToListAsync();
 
         var cliente = facturas
@@ -187,8 +192,10 @@
 
     private async Task<string> MesMasVentas()
     {
+   
         var facturas = await DbContext.Facturas
             .Include(f => f.Articulos)
+            .Where(f => !f.Archivada) 
             .ToListAsync();
 
         var meses = facturas
@@ -210,7 +217,10 @@
 
     private async Task<string> DiaSemanaConMasVentas()
     {
-        var facturas = await DbContext.Facturas.ToListAsync();
+      
+        var facturas = await DbContext.Facturas
+            .Where(f => !f.Archivada) 
+            .ToListAsync();
 
         var dias = facturas
             .GroupBy(f => f.Fecha.DayOfWeek)
@@ -246,8 +256,10 @@
 
     private async Task<string> EvolucionMensual()
     {
+     
         var facturas = await DbContext.Facturas
             .Include(f => f.Articulos)
+            .Where(f => !f.Archivada) 
             .ToListAsync();
 
         var meses = facturas
@@ -274,8 +286,10 @@
 
     private async Task<string> ClientesInactivos()
     {
+        
         var fechaLimite = DateTime.Now.AddMonths(-3);
         var clientes = await DbContext.Facturas
+            .Where(f => !f.Archivada) 
             .GroupBy(f => f.NombreCliente)
             .Select(g => new
             {
@@ -299,10 +313,11 @@
     }
 
     private async Task<string> TopCombos()
-    {
+    {  
+
         var facturas = await DbContext.Facturas
             .Include(f => f.Articulos)
-            .Where(f => f.Articulos.Count > 1)
+            .Where(f => !f.Archivada && f.Articulos.Count > 1)
             .ToListAsync();
 
         if (!facturas.Any())
