@@ -9,6 +9,8 @@
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
+
+
 <div class="m3-container">
     @if (!autenticado)
     {
@@ -98,11 +100,14 @@
                                 <td style="text-align: right;"><strong>$@f.Total.ToString("F2")</strong></td>
                                 <td style="text-align: center;">
                                     <div class="m3-button-group" style="justify-content: center;">
-                                        <button class="m3-button m3-button-tonal">
+                                        <button class="m3-button m3-button-tonal" @onclick="@(() => VerDetalles(f))">
                                             👁️ Ver Detalles
                                         </button>
                                         <button class="m3-button m3-button-filled" @onclick="@(() => DesarchivarFactura(f.Id))">
                                             📤 Desarchivar
+                                        </button>
+                                        <button class="m3-button m3-button-error" @onclick="@(() => EliminarFactura(f.Id))">
+                                            🗑️ Eliminar
                                         </button>
                                     </div>
                                 </td>
@@ -118,6 +123,57 @@
                     </tfoot>
                 </table>
             </div>
+
+            @if (facturaSeleccionada != null)
+            {
+                <div class="m3-card m3-card-elevated">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="margin: 0;">Detalle de Factura #@facturaSeleccionada.Id</h3>
+                        <button class="m3-button m3-button-outlined" @onclick="CerrarDetalles">
+                            ✕ Cerrar
+                        </button>
+                    </div>
+
+                    <div class="m3-text-field">
+                        <label>Cliente:</label>
+                        <p style="font-size: 18px; padding: 16px; background-color: var(--md-sys-color-surface-container-high); border-radius: var(--md-sys-shape-corner-small); margin: 0;">
+                            @facturaSeleccionada.NombreCliente
+                        </p>
+                    </div>
+
+                    <div class="m3-text-field">
+                        <label>Fecha:</label>
+                        <p style="font-size: 18px; padding: 16px; background-color: var(--md-sys-color-surface-container-high); border-radius: var(--md-sys-shape-corner-small); margin: 0;">
+                            @facturaSeleccionada.Fecha.ToString("dd/MM/yyyy")
+                        </p>
+                    </div>
+
+                    <h4>Artículos:</h4>
+                    <table class="m3-table">
+                        <thead>
+                            <tr>
+                                <th>Artículo</th>
+                                <th style="text-align: right;">Precio</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var art in facturaSeleccionada.Articulos)
+                            {
+                                <tr>
+                                    <td>@art.Nombre</td>
+                                    <td style="text-align: right;"><strong>$@art.Precio.ToString("F2")</strong></td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td><strong>TOTAL</strong></td>
+                                <td style="text-align: right;"><strong>$@facturaSeleccionada.Total.ToString("F2")</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            }
         }
     }
 </div>
@@ -127,6 +183,7 @@
     private string contraseñaIngresada = "";
     private string mensajeError = "";
     private List<Factura>? facturas;
+    private Factura? facturaSeleccionada;
 
     private async Task OnKeyPress(KeyboardEventArgs e)
     {
@@ -167,6 +224,16 @@
             .ToListAsync();
     }
 
+    private void VerDetalles(Factura factura)
+    {
+        facturaSeleccionada = factura;
+    }
+
+    private void CerrarDetalles()
+    {
+        facturaSeleccionada = null;
+    }
+
     private async Task DesarchivarFactura(int id)
     {
         bool confirmar = await JS.InvokeAsync<bool>("confirm",
@@ -179,6 +246,26 @@
         if (factura != null)
         {
             factura.Archivada = false;
+            await DbContext.SaveChangesAsync();
+            await CargarFacturas();
+        }
+    }
+
+    private async Task EliminarFactura(int id)
+    {
+        bool confirmar = await JS.InvokeAsync<bool>("confirm",
+            $"¿Estás seguro de que deseas eliminar permanentemente la factura #{id}?");
+
+        if (!confirmar)
+            return;
+
+        var factura = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .FirstOrDefaultAsync(f => f.Id == id);
+
+        if (factura != null)
+        {
+            DbContext.Facturas.Remove(factura);
             await DbContext.SaveChangesAsync();
             await CargarFacturas();
         }
