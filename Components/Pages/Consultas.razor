@@ -68,7 +68,7 @@
         {
             try
             {
-                // Restaurar consulta seleccionada
+            
                 var consultaResult = await SessionStorage.GetAsync<string>("consultas_tipo_seleccionado");
                 if (consultaResult.Success && !string.IsNullOrEmpty(consultaResult.Value))
                 {
@@ -79,7 +79,7 @@
             }
             catch
             {
-                // Si hay algún error al restaurar, simplemente ignoramos y continuamos
+             
             }
         }
     }
@@ -135,7 +135,7 @@
     {
         var facturas = await DbContext.Facturas
             .Include(f => f.Articulos)
-            .Where(f => !f.Archivada) // ✅ YA LO TIENES
+            .Where(f => !f.Archivada) 
             .ToListAsync();
 
         if (!facturas.Any())

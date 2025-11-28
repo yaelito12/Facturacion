@@ -24,7 +24,8 @@
                 <label>Contraseña:</label>
                 <input type="password"
                        @bind="contraseñaIngresada"
-                       @onkeypress="OnKeyPress"
+                       @bind:event="oninput"
+                       @onkeydown="OnKeyPress"
                        placeholder="Ingresa la contraseña"
                        autofocus />
             </div>
@@ -189,6 +190,8 @@
     {
         if (e.Key == "Enter")
         {
+          
+            await Task.Delay(10);
             await ValidarContraseña();
         }
     }
