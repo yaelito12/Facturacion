@@ -69,6 +69,9 @@
                                     <button class="m3-button m3-button-tonal" @onclick="@(() => VerDetalle(f.Id))">
                                         👁️ Ver
                                     </button>
+                                    <button class="m3-button m3-button-outlined" @onclick="@(() => ArchivarFactura(f.Id))">
+                                        📥 Archivar
+                                    </button>
                                     <button class="m3-button m3-button-error" @onclick="@(() => EliminarFactura(f.Id))">
                                         🗑️ Eliminar
                                     </button>
@@ -91,7 +94,6 @@
 
 @code {
     private List<Factura>? facturas;
-    private string mensaje = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -110,6 +112,7 @@
     {
         facturas = await DbContext.Facturas
             .Include(f => f.Articulos)
+            .Where(f => !f.Archivada)
             .OrderByDescending(f => f.Fecha)
             .ToListAsync();
     }
@@ -119,6 +122,23 @@
         var token = NavService.GenerarTokenNavegacion(id);
         await JS.InvokeVoidAsync("eval", $"sessionStorage.setItem('factura_token_{id}', '{token}')");
         Navigation.NavigateTo($"/factura/{id}?token={token}");
+    }
+
+    private async Task ArchivarFactura(int id)
+    {
+        bool confirmar = await JS.InvokeAsync<bool>("confirm",
+            $"¿Deseas archivar la factura #{id}? No aparecerá en reportes ni consultas.");
+
+        if (!confirmar)
+            return;
+
+        var factura = await DbContext.Facturas.FindAsync(id);
+        if (factura != null)
+        {
+            factura.Archivada = true;
+            await DbContext.SaveChangesAsync();
+            await CargarFacturas();
+        }
     }
 
     private async Task EliminarFactura(int id)
