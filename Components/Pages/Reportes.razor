@@ -255,14 +255,17 @@
             }
             catch
             {
-             
+
             }
         }
     }
 
     private async Task CargarAñosDisponibles()
     {
-        var facturas = await DbContext.Facturas.ToListAsync();
+        
+        var facturas = await DbContext.Facturas
+            .Where(f => !f.Archivada) 
+            .ToListAsync();
 
         if (facturas.Any())
         {
@@ -294,16 +297,17 @@
 
         await CargarReporteSinLimpiar();
 
-       
+
         await SessionStorage.DeleteAsync("reportes_mes_seleccionado");
         await SessionStorage.DeleteAsync("reportes_factura_seleccionada");
     }
 
     private async Task CargarReporteSinLimpiar()
     {
+      
         var facturas = await DbContext.Facturas
             .Include(f => f.Articulos)
-            .Where(f => f.Fecha.Year == añoSeleccionado)
+            .Where(f => f.Fecha.Year == añoSeleccionado && !f.Archivada) 
             .ToListAsync();
 
         var facturasPorMes = facturas
@@ -332,9 +336,10 @@
         facturaSeleccionada = null;
         articulosFactura.Clear();
 
+
         facturasDelMes = await DbContext.Facturas
             .Include(f => f.Articulos)
-            .Where(f => f.Fecha.Year == añoSeleccionado && f.Fecha.Month == mes)
+            .Where(f => f.Fecha.Year == añoSeleccionado && f.Fecha.Month == mes && !f.Archivada) 
             .OrderBy(f => f.Fecha)
             .ToListAsync();
     }
