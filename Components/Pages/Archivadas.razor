@@ -97,9 +97,14 @@
                                 <td>@f.NombreCliente</td>
                                 <td style="text-align: right;"><strong>$@f.Total.ToString("F2")</strong></td>
                                 <td style="text-align: center;">
-                                    <button class="m3-button m3-button-tonal">
-                                        👁️ Ver Detalles
-                                    </button>
+                                    <div class="m3-button-group" style="justify-content: center;">
+                                        <button class="m3-button m3-button-tonal">
+                                            👁️ Ver Detalles
+                                        </button>
+                                        <button class="m3-button m3-button-filled" @onclick="@(() => DesarchivarFactura(f.Id))">
+                                            📤 Desarchivar
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -160,6 +165,23 @@
             .Where(f => f.Archivada)
             .OrderByDescending(f => f.Fecha)
             .ToListAsync();
+    }
+
+    private async Task DesarchivarFactura(int id)
+    {
+        bool confirmar = await JS.InvokeAsync<bool>("confirm",
+            $"¿Deseas desarchivar la factura #{id}? Volverá a aparecer en reportes y consultas.");
+
+        if (!confirmar)
+            return;
+
+        var factura = await DbContext.Facturas.FindAsync(id);
+        if (factura != null)
+        {
+            factura.Archivada = false;
+            await DbContext.SaveChangesAsync();
+            await CargarFacturas();
+        }
     }
 
     private void Volver()
