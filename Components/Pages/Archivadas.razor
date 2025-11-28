@@ -47,12 +47,73 @@
     else
     {
         <h1>📦 Facturas Archivadas</h1>
+
         <div class="m3-button-group">
             <button class="m3-button m3-button-outlined" @onclick="Volver">
                 ← Volver al Inicio
             </button>
         </div>
-        <p>Contenido autenticado (próximamente)</p>
+
+        @if (facturas == null)
+        {
+            <div class="m3-card" style="text-align: center; padding: 48px;">
+                <p style="color: var(--md-sys-color-on-surface-variant);">Cargando facturas archivadas...</p>
+            </div>
+        }
+        else if (!facturas.Any())
+        {
+            <div class="m3-card m3-card-elevated" style="text-align: center; padding: 48px;">
+                <h3>No hay facturas archivadas</h3>
+                <p style="color: var(--md-sys-color-on-surface-variant); margin: 16px 0;">
+                    Las facturas archivadas aparecerán aquí
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="m3-card m3-card-elevated" style="padding: 0; overflow: hidden;">
+                <div style="padding: 24px; background-color: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-on-tertiary-container);">
+                    <h2 style="margin: 0;">
+                        Facturas Archivadas: <span class="m3-chip" style="background-color: var(--md-sys-color-tertiary); color: var(--md-sys-color-on-tertiary);">@facturas.Count</span>
+                    </h2>
+                </div>
+
+                <table class="m3-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Fecha</th>
+                            <th>Cliente</th>
+                            <th style="text-align: right;">Total</th>
+                            <th style="text-align: center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var f in facturas)
+                        {
+                            <tr style="background-color: var(--md-sys-color-surface-container-low);">
+                                <td><strong>#@f.Id</strong></td>
+                                <td>@f.Fecha.ToString("dd/MM/yyyy")</td>
+                                <td>@f.NombreCliente</td>
+                                <td style="text-align: right;"><strong>$@f.Total.ToString("F2")</strong></td>
+                                <td style="text-align: center;">
+                                    <button class="m3-button m3-button-tonal">
+                                        👁️ Ver Detalles
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3"><strong>TOTAL GENERAL</strong></td>
+                            <td style="text-align: right;"><strong>$@facturas.Sum(f => f.Total).ToString("F2")</strong></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        }
     }
 </div>
 
@@ -60,6 +121,7 @@
     private bool autenticado = false;
     private string contraseñaIngresada = "";
     private string mensajeError = "";
+    private List<Factura>? facturas;
 
     private async Task OnKeyPress(KeyboardEventArgs e)
     {
@@ -82,12 +144,22 @@
         if (ArchivoService.ValidarContraseña(contraseñaIngresada))
         {
             autenticado = true;
+            await CargarFacturas();
         }
         else
         {
             mensajeError = "Contraseña incorrecta";
             contraseñaIngresada = "";
         }
+    }
+
+    private async Task CargarFacturas()
+    {
+        facturas = await DbContext.Facturas
+            .Include(f => f.Articulos)
+            .Where(f => f.Archivada)
+            .OrderByDescending(f => f.Fecha)
+            .ToListAsync();
     }
 
     private void Volver()
