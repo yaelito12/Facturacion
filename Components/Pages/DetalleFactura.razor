@@ -78,185 +78,234 @@
                 @if (modoEdicion)
                 {
                     <input type="text" value="@factura.NombreCliente"
-                           @oninput="@(async (e) => { factura.NombreCliente = e.Value?.ToString() ?? ""; ValidarCliente(); await VerificarYHabilitarInterceptor(); })"
-                           placeholder="Nombre del cliente (mínimo 3 caracteres)" />
-                    @if (mostrarErrorCliente)
-                    {
-                        <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
-                            ⚠️ El nombre del cliente debe tener al menos 3 caracteres
-                        </small>
-                    }
-                }
-                else
-                {
-                    <p style="font-size: 18px; padding: 16px; background-color: var(--md-sys-color-surface-container-high); border-radius: var(--md-sys-shape-corner-small); margin: 0;">
-                        @factura.NombreCliente
-                    </p>
-                }
-            </div>
+                           @oninput="@(async (e) => {
+                           var valor = e.Value?.ToString() ?? "";
 
-            <div class="m3-text-field">
-                <label>Fecha:</label>
-                @if (modoEdicion)
-                {
-                    <input type="date" value="@factura.Fecha.ToString("yyyy-MM-dd")"
-                           @onchange="@(async (e) => { if (DateTime.TryParse(e.Value?.ToString(), out var fecha)) { factura.Fecha = fecha; await VerificarYHabilitarInterceptor(); } })" />
-                }
-                else
-                {
-                    <p style="font-size: 18px; padding: 16px; background-color: var(--md-sys-color-surface-container-high); border-radius: var(--md-sys-shape-corner-small); margin: 0;">
-                        @factura.Fecha.ToString("dd/MM/yyyy")
-                    </p>
-                }
-            </div>
+                           // Validar caracteres permitidos
+                           if (!string.IsNullOrWhiteSpace(valor) && !ValidarCaracteresNombre(valor))
+                           {
+                             // No actualizar si hay caracteres inválidos, mantener el valor anterior
+                               StateHasChanged();
+                               return;
+                           }
 
-            <hr class="m3-divider" />
-
-            <h3>Artículos</h3>
-
-            @if (factura.Articulos != null && factura.Articulos.Any())
+                           factura.NombreCliente = valor;
+                           ValidarCliente();
+                           await VerificarYHabilitarInterceptor();
+                       })"
+                         @onblur="@(() => {
+                       if (!string.IsNullOrWhiteSpace(factura.NombreCliente))
+                       {
+                           factura.NombreCliente = FormatearNombre(factura.NombreCliente);
+                           StateHasChanged();
+                       }
+                   })"
+                   placeholder="Nombre del cliente (mínimo 3 caracteres)" />
+            @if (mostrarErrorCliente)
             {
-                <div style="padding: 0; overflow: hidden;">
-                    <table class="m3-table">
-                        <thead>
-                            <tr>
-                                <th>Artículo</th>
-                                <th style="text-align: right;">Precio</th>
-                                @if (modoEdicion)
-                                {
-                                    <th style="text-align: center;">Acciones</th>
-                                }
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var art in factura.Articulos)
-                            {
-                                <tr>
-                                    <td>
-                                        @if (modoEdicion)
-                                        {
-                                            <input type="text" value="@art.Nombre"
-                                                   @oninput="@(async (e) => { art.Nombre = e.Value?.ToString() ?? ""; ValidarArticulo(art); await VerificarYHabilitarInterceptor(); })"
-                                                   placeholder="Nombre del artículo (mínimo 2 caracteres)"
-                                                   style="width: 100%;" />
-                                            @if (articulosConError.Contains(art))
-                                            {
-                                                <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
-                                                    ⚠️ Mínimo 2 caracteres
-                                                </small>
-                                            }
-                                        }
-                                        else
-                                        {
-                                            @art.Nombre
-                                        }
-                                    </td>
-                                    <td style="text-align: right;">
-                                        @if (modoEdicion)
-                                        {
-                                            <input type="text"
-                                                   value="@(preciosTemporales.ContainsKey(art) ? preciosTemporales[art] : art.Precio.ToString("0.##"))"
-                                                   @oninput="@(async (e) => {
-                                                   var valor = e.Value?.ToString() ?? "";
-
-                                              
-                                                   preciosTemporales[art] = valor;
-
-                                                
-                                                   if (System.Text.RegularExpressions.Regex.IsMatch(valor, @"[^\d.]"))
-                                                   {
-                                                       articulosConFormatoInvalido[art] = "Solo se permiten números y punto decimal";
-                                                       StateHasChanged();
-                                                       return;
-                                                   }
-
-                                                  
-                                                   if (valor.Count(c => c == '.') > 1)
-                                                   {
-                                                       articulosConFormatoInvalido[art] = "Solo se permite un punto decimal";
-                                                       StateHasChanged();
-                                                       return;
-                                                   }
-
-                                                  
-                                                   articulosConFormatoInvalido.Remove(art);
-
-                                                   if (string.IsNullOrWhiteSpace(valor))
-                                                   {
-                                                       art.Precio = 0;
-                                                       articulosConPrecioNegativo.Remove(art);
-                                                       await VerificarYHabilitarInterceptor();
-                                                       StateHasChanged();
-                                                       return;
-                                                   }
-
-                                                   if (decimal.TryParse(valor, System.Globalization.NumberStyles.AllowDecimalPoint,
-                                                       System.Globalization.CultureInfo.InvariantCulture, out var precio))
-                                                   {
-                                                       if (precio < 0)
-                                                       {
-                                                           articulosConPrecioNegativo.Add(art);
-                                                       }
-                                                       else
-                                                       {
-                                                           articulosConPrecioNegativo.Remove(art);
-                                                       }
-                                                       art.Precio = precio;
-                                                       await VerificarYHabilitarInterceptor();
-                                                   }
-                                                   StateHasChanged();
-                                               })"
-                                                 placeholder="0.00"
-                                                 style="width: 120px; text-align: right;" />
-                                        @if (articulosConFormatoInvalido.ContainsKey(art))
-                                        {
-                                            <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
-                                                ⚠️ @articulosConFormatoInvalido[art]
-                                            </small>
-                                        }
-                                        else if (articulosConPrecioNegativo.Contains(art))
-                                        {
-                                            <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
-                                                ⚠️ El precio no puede ser negativo
-                                            </small>
-                                        }
-                                    }
-                                                        else
-                                    {
-                                        <strong>$@art.Precio.ToString("F2")</strong>
-                                    }
-                                </td>
-                                @if (modoEdicion)
-                                {
-                                    <td style="text-align: center;">
-                                        <button class="m3-button m3-button-text" style="color: var(--md-sys-color-error);" @onclick="() => EliminarArticulo(art)">
-                                            Eliminar
-                                        </button>
-                                    </td>
-                                }
-                            </tr>
+                <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                    ⚠️ El nombre del cliente debe tener al menos 3 caracteres
+                </small>
+            }
                         }
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td><strong>TOTAL</strong></td>
-                            <td style="text-align: right;"><strong>$@factura.Total.ToString("F2")</strong></td>
-                            @if (modoEdicion)
-                            {
-                                <td></td>
-                            }
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+                        else
+            {
+                <p style="font-size: 18px; padding: 16px; background-color: var(--md-sys-color-surface-container-high); border-radius: var(--md-sys-shape-corner-small); margin: 0;">
+                    @factura.NombreCliente
+                </p>
+            }
+        </div>
 
+        <div class="m3-text-field">
+            <label>Fecha:</label>
             @if (modoEdicion)
             {
-                <button class="m3-button m3-button-tonal" @onclick="AgregarArticulo" style="margin-top: 16px;">
-                    Agregar Artículo
-                </button>
+                <input type="date" value="@factura.Fecha.ToString("yyyy-MM-dd")"
+                       @onchange="@(async (e) => { if (DateTime.TryParse(e.Value?.ToString(), out var fecha)) { factura.Fecha = fecha; await VerificarYHabilitarInterceptor(); } })" />
             }
+            else
+            {
+                <p style="font-size: 18px; padding: 16px; background-color: var(--md-sys-color-surface-container-high); border-radius: var(--md-sys-shape-corner-small); margin: 0;">
+                    @factura.Fecha.ToString("dd/MM/yyyy")
+                </p>
+            }
+        </div>
+
+        <hr class="m3-divider" />
+
+        <h3>Artículos</h3>
+
+        @if (factura.Articulos != null && factura.Articulos.Any())
+        {
+            <div style="padding: 0; overflow: hidden;">
+                <table class="m3-table">
+                    <thead>
+                        <tr>
+                            <th>Artículo</th>
+                            <th style="text-align: right;">Precio</th>
+                            @if (modoEdicion)
+                            {
+                                <th style="text-align: center;">Acciones</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var art in factura.Articulos)
+                        {
+                            <tr>
+                                <td>
+                                    @if (modoEdicion)
+                                    {
+                                        <input type="text" value="@art.Nombre"
+                                               @oninput="@(async (e) => {
+                                               var valor = e.Value?.ToString() ?? "";
+
+                                               // Validar caracteres permitidos
+                                               if (!string.IsNullOrWhiteSpace(valor) && !ValidarCaracteresNombre(valor))
+                                               {
+                                                   nombresArticulosConError[art] = "No se permiten caracteres especiales como [], {}, <>";
+                                                   StateHasChanged();
+                                                   return;
+                                               }
+
+                                               nombresArticulosConError.Remove(art);
+                                               art.Nombre = valor;
+                                               ValidarArticulo(art);
+                                               await VerificarYHabilitarInterceptor();
+                                           })"
+                                             @onblur="@(() => {
+                                           if (!string.IsNullOrWhiteSpace(art.Nombre))
+                                           {
+                                               art.Nombre = FormatearNombre(art.Nombre);
+                                               StateHasChanged();
+                                           }
+                                       })"
+                                         placeholder="Nombre del artículo (mínimo 2 caracteres)"
+                                         style="width: 100%;" />
+                                @if (nombresArticulosConError.ContainsKey(art))
+                                {
+                                    <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                                        ⚠️ @nombresArticulosConError[art]
+                                    </small>
+                                }
+                                else if (articulosConError.Contains(art))
+                                {
+                                    <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                                        ⚠️ Mínimo 2 caracteres
+                                    </small>
+                                }
+                            }
+                            else
+                            {
+                                @art.Nombre
+                            }
+                        </td>
+                        <td style="text-align: right;">
+                            @if (modoEdicion)
+                            {
+                                <input type="text"
+                                       value="@(preciosTemporales.ContainsKey(art) ? preciosTemporales[art] : art.Precio.ToString("0.##"))"
+                                       @oninput="@(async (e) => {
+                                       var valor = e.Value?.ToString() ?? "";
+
+                                       // Guardar el valor temporal tal como lo escribe el usuario
+                                       preciosTemporales[art] = valor;
+
+                                       // Verificar si contiene símbolos inválidos
+                                       if (System.Text.RegularExpressions.Regex.IsMatch(valor, @"[^\d.]"))
+                                       {
+                                           articulosConFormatoInvalido[art] = "Solo se permiten números y punto decimal";
+                                           StateHasChanged();
+                                           return;
+                                       }
+
+                                       // Verificar si hay más de un punto decimal
+                                       if (valor.Count(c => c == '.') > 1)
+                                       {
+                                           articulosConFormatoInvalido[art] = "Solo se permite un punto decimal";
+                                           StateHasChanged();
+                                           return;
+                                       }
+
+                                       // Limpiar error de formato inválido si existía
+                                       articulosConFormatoInvalido.Remove(art);
+
+                                       if (string.IsNullOrWhiteSpace(valor))
+                                       {
+                                           art.Precio = 0;
+                                           articulosConPrecioNegativo.Remove(art);
+                                           await VerificarYHabilitarInterceptor();
+                                           StateHasChanged();
+                                           return;
+                                       }
+
+                                       if (decimal.TryParse(valor, System.Globalization.NumberStyles.AllowDecimalPoint,
+                                           System.Globalization.CultureInfo.InvariantCulture, out var precio))
+                                       {
+                                           if (precio < 0)
+                                           {
+                                               articulosConPrecioNegativo.Add(art);
+                                           }
+                                           else
+                                           {
+                                               articulosConPrecioNegativo.Remove(art);
+                                           }
+                                           art.Precio = precio;
+                                           await VerificarYHabilitarInterceptor();
+                                       }
+                                       StateHasChanged();
+                                   })"
+                                   placeholder="0.00"
+                                   style="width: 120px; text-align: right;" />
+                            @if (articulosConFormatoInvalido.ContainsKey(art))
+                            {
+                                <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                                    ⚠️ @articulosConFormatoInvalido[art]
+                                </small>
+                            }
+                            else if (articulosConPrecioNegativo.Contains(art))
+                            {
+                                <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                                    ⚠️ El precio no puede ser negativo
+                                </small>
+                            }
+                                                        }
+                                                        else
+                            {
+                                <strong>$@art.Precio.ToString("F2")</strong>
+                            }
+                        </td>
+                        @if (modoEdicion)
+                        {
+                            <td style="text-align: center;">
+                                <button class="m3-button m3-button-text" style="color: var(--md-sys-color-error);" @onclick="() => EliminarArticulo(art)">
+                                    Eliminar
+                                </button>
+                            </td>
+                        }
+                    </tr>
+                                        }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td><strong>TOTAL</strong></td>
+                        <td style="text-align: right;"><strong>$@factura.Total.ToString("F2")</strong></td>
+                        @if (modoEdicion)
+                        {
+                            <td></td>
+                        }
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        @if (modoEdicion)
+        {
+            <button class="m3-button m3-button-tonal" @onclick="AgregarArticulo" style="margin-top: 16px;">
+                Agregar Artículo
+            </button>
         }
+                }
                 else
         {
             <p style="text-align: center; color: var(--md-sys-color-on-surface-variant); padding: 24px;">
@@ -307,6 +356,7 @@
     private HashSet<Articulo> articulosConPrecioNegativo = new();
     private Dictionary<Articulo, string> articulosConFormatoInvalido = new();
     private Dictionary<Articulo, string> preciosTemporales = new();
+    private Dictionary<Articulo, string> nombresArticulosConError = new();
 
     private const int LONGITUD_MINIMA_CLIENTE = 3;
     private const int LONGITUD_MINIMA_ARTICULO = 2;
@@ -345,6 +395,7 @@
         articulosConPrecioNegativo.Clear();
         articulosConFormatoInvalido.Clear();
         preciosTemporales.Clear();
+        nombresArticulosConError.Clear();
         StateHasChanged();
     }
 
@@ -373,6 +424,34 @@
         if (factura == null) return;
         var nombre = factura.NombreCliente ?? "";
         mostrarErrorCliente = !string.IsNullOrWhiteSpace(nombre) && nombre.Trim().Length < LONGITUD_MINIMA_CLIENTE;
+    }
+
+    private string FormatearNombre(string nombre)
+    {
+        if (string.IsNullOrWhiteSpace(nombre))
+            return "";
+
+        // Eliminar caracteres especiales no permitidos (mantener letras, números, espacios, guiones, apóstrofes y caracteres acentuados)
+        nombre = System.Text.RegularExpressions.Regex.Replace(nombre, @"[^\p{L}\p{N}\s\-']", "");
+
+        // Reemplazar múltiples espacios por uno solo
+        nombre = System.Text.RegularExpressions.Regex.Replace(nombre, @"\s+", " ");
+
+        // Capitalizar primera letra de cada palabra
+        var palabras = nombre.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var palabrasFormateadas = palabras.Select(p =>
+        {
+            if (p.Length == 0) return p;
+            return char.ToUpper(p[0]) + p.Substring(1).ToLower();
+        });
+
+        return string.Join(" ", palabrasFormateadas).Trim();
+    }
+
+    private bool ValidarCaracteresNombre(string nombre)
+    {
+        // Verificar si contiene caracteres no permitidos
+        return !System.Text.RegularExpressions.Regex.IsMatch(nombre, @"[^\p{L}\p{N}\s\-']");
     }
 
     private void ValidarArticulo(Articulo art)
@@ -451,6 +530,7 @@
         articulosConPrecioNegativo.Clear();
         articulosConFormatoInvalido.Clear();
         preciosTemporales.Clear();
+        nombresArticulosConError.Clear();
         await DeshabilitarInterceptorNavegacion();
         await CargarFactura();
         StateHasChanged();
@@ -460,7 +540,7 @@
     {
         mensaje = "";
 
-       
+        // PRIMERO: Verificar si hay errores de formato inválido en precios
         if (articulosConFormatoInvalido.Any())
         {
             mensaje = "Hay artículos con formato de precio inválido. Solo se permiten números y punto decimal.";
@@ -468,12 +548,26 @@
             return;
         }
 
-       
+        // Verificar si hay errores de formato en nombres de artículos
+        if (nombresArticulosConError.Any())
+        {
+            mensaje = "Hay nombres de artículos con caracteres no permitidos.";
+            StateHasChanged();
+            return;
+        }
+
+        // Ahora sí limpiamos los errores para re-validar
         mostrarErrorCliente = false;
         articulosConError.Clear();
         articulosConPrecioNegativo.Clear();
 
-     
+        // Formatear nombre del cliente antes de validar
+        if (!string.IsNullOrWhiteSpace(factura.NombreCliente))
+        {
+            factura.NombreCliente = FormatearNombre(factura.NombreCliente);
+        }
+
+        // Validar nombre del cliente
         if (string.IsNullOrWhiteSpace(factura.NombreCliente))
         {
             mensaje = "Debe ingresar el nombre del cliente";
@@ -488,14 +582,20 @@
             return;
         }
 
-        
+        // Validar artículos
         var articulosValidos = new List<Articulo>();
         var hayErroresArticulos = false;
         var hayPreciosNegativos = false;
 
         foreach (var art in factura.Articulos)
         {
-           
+            // Formatear nombre del artículo
+            if (!string.IsNullOrWhiteSpace(art.Nombre))
+            {
+                art.Nombre = FormatearNombre(art.Nombre);
+            }
+
+            // Validar precio negativo
             if (art.Precio < 0)
             {
                 articulosConPrecioNegativo.Add(art);
@@ -580,6 +680,7 @@
             articulosConPrecioNegativo.Remove(art);
             articulosConFormatoInvalido.Remove(art);
             preciosTemporales.Remove(art);
+            nombresArticulosConError.Remove(art);
             _ = VerificarYHabilitarInterceptor();
         }
         else
