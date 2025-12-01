@@ -75,7 +75,13 @@
 
                     <div class="m3-text-field">
                         <label>💵 Precio:</label>
-                        <input type="number" step="0.01" placeholder="0.00" @bind="art.Articulo.Precio" @bind:after="GuardarEnStorage" />
+                        <input type="number" step="0.01" min="0" placeholder="0.00" @bind="art.Articulo.Precio" @bind:after="ValidarPrecio" />
+                        @if (articulosConPrecioNegativo.Contains(art.Articulo))
+                        {
+                            <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                                ⚠️ El precio no puede ser negativo
+                            </small>
+                        }
                     </div>
 
                     <div class="m3-button-group">
@@ -128,9 +134,26 @@
 
     private bool mostrarErrorCliente = false;
     private HashSet<Articulo> articulosConError = new();
+    private HashSet<Articulo> articulosConPrecioNegativo = new();
 
     private const int LONGITUD_MINIMA_CLIENTE = 3;
     private const int LONGITUD_MINIMA_ARTICULO = 2;
+
+    private async Task ValidarPrecio()
+    {
+        // Validar precios negativos
+        articulosConPrecioNegativo.Clear();
+        foreach (var art in articulosTemp)
+        {
+            if (art.Precio < 0)
+            {
+                articulosConPrecioNegativo.Add(art);
+                art.Precio = 0; // Resetear a 0
+            }
+        }
+
+        await GuardarEnStorage();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -298,6 +321,7 @@
         {
             articulosTemp.Remove(art);
             articulosConError.Remove(art);
+            articulosConPrecioNegativo.Remove(art);
             await GuardarEnStorage();
         }
         else
@@ -311,6 +335,7 @@
         art.Nombre = "";
         art.Precio = 0;
         articulosConError.Remove(art);
+        articulosConPrecioNegativo.Remove(art);
         await GuardarEnStorage();
     }
 
@@ -319,6 +344,7 @@
         mensaje = "";
         mostrarErrorCliente = false;
         articulosConError.Clear();
+        articulosConPrecioNegativo.Clear();
 
         // Validar nombre del cliente
         if (string.IsNullOrWhiteSpace(nuevaFactura.NombreCliente))
@@ -338,9 +364,18 @@
         // Validar artículos
         var articulosValidos = new List<Articulo>();
         var hayErroresArticulos = false;
+        var hayPreciosNegativos = false;
 
         foreach (var art in articulosTemp)
         {
+            // Validar precio negativo
+            if (art.Precio < 0)
+            {
+                articulosConPrecioNegativo.Add(art);
+                hayPreciosNegativos = true;
+                continue;
+            }
+
             if (string.IsNullOrWhiteSpace(art.Nombre))
                 continue;
 
@@ -355,6 +390,12 @@
             {
                 articulosValidos.Add(art);
             }
+        }
+
+        if (hayPreciosNegativos)
+        {
+            mensaje = "Los precios no pueden ser negativos";
+            return;
         }
 
         if (hayErroresArticulos)
@@ -391,6 +432,7 @@
         nuevaFactura = new() { Fecha = DateTime.Now };
         articulosTemp = new() { new Articulo() };
         articulosConError.Clear();
+        articulosConPrecioNegativo.Clear();
     }
 
     private void IrAFacturas()
