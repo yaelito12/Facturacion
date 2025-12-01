@@ -78,7 +78,14 @@
                 @if (modoEdicion)
                 {
                     <input type="text" value="@factura.NombreCliente"
-                           @oninput="@(async (e) => { factura.NombreCliente = e.Value?.ToString() ?? ""; await VerificarYHabilitarInterceptor(); })" />
+                           @oninput="@(async (e) => { factura.NombreCliente = e.Value?.ToString() ?? ""; ValidarCliente(); await VerificarYHabilitarInterceptor(); })"
+                           placeholder="Nombre del cliente (mínimo 3 caracteres)" />
+                    @if (mostrarErrorCliente)
+                    {
+                        <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                            ⚠️ El nombre del cliente debe tener al menos 3 caracteres
+                        </small>
+                    }
                 }
                 else
                 {
@@ -129,8 +136,15 @@
                                         @if (modoEdicion)
                                         {
                                             <input type="text" value="@art.Nombre"
-                                                   @oninput="@(async (e) => { art.Nombre = e.Value?.ToString() ?? ""; await VerificarYHabilitarInterceptor(); })"
+                                                   @oninput="@(async (e) => { art.Nombre = e.Value?.ToString() ?? ""; ValidarArticulo(art); await VerificarYHabilitarInterceptor(); })"
+                                                   placeholder="Nombre del artículo (mínimo 2 caracteres)"
                                                    style="width: 100%;" />
+                                            @if (articulosConError.Contains(art))
+                                            {
+                                                <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                                                    ⚠️ Mínimo 2 caracteres
+                                                </small>
+                                            }
                                         }
                                         else
                                         {
@@ -140,74 +154,137 @@
                                     <td style="text-align: right;">
                                         @if (modoEdicion)
                                         {
-                                            <input type="number" step="0.01" value="@art.Precio"
-                                                   @oninput="@(async (e) => { if (decimal.TryParse(e.Value?.ToString(), out var precio)) { art.Precio = precio; await VerificarYHabilitarInterceptor(); } })"
-                                                   style="width: 120px; text-align: right;" />
-                                        }
-                                        else
+                                            <input type="text"
+                                                   value="@(preciosTemporales.ContainsKey(art) ? preciosTemporales[art] : art.Precio.ToString("0.##"))"
+                                                   @oninput="@(async (e) => {
+                                                   var valor = e.Value?.ToString() ?? "";
+
+                                              
+                                                   preciosTemporales[art] = valor;
+
+                                                
+                                                   if (System.Text.RegularExpressions.Regex.IsMatch(valor, @"[^\d.]"))
+                                                   {
+                                                       articulosConFormatoInvalido[art] = "Solo se permiten números y punto decimal";
+                                                       StateHasChanged();
+                                                       return;
+                                                   }
+
+                                                  
+                                                   if (valor.Count(c => c == '.') > 1)
+                                                   {
+                                                       articulosConFormatoInvalido[art] = "Solo se permite un punto decimal";
+                                                       StateHasChanged();
+                                                       return;
+                                                   }
+
+                                                  
+                                                   articulosConFormatoInvalido.Remove(art);
+
+                                                   if (string.IsNullOrWhiteSpace(valor))
+                                                   {
+                                                       art.Precio = 0;
+                                                       articulosConPrecioNegativo.Remove(art);
+                                                       await VerificarYHabilitarInterceptor();
+                                                       StateHasChanged();
+                                                       return;
+                                                   }
+
+                                                   if (decimal.TryParse(valor, System.Globalization.NumberStyles.AllowDecimalPoint,
+                                                       System.Globalization.CultureInfo.InvariantCulture, out var precio))
+                                                   {
+                                                       if (precio < 0)
+                                                       {
+                                                           articulosConPrecioNegativo.Add(art);
+                                                       }
+                                                       else
+                                                       {
+                                                           articulosConPrecioNegativo.Remove(art);
+                                                       }
+                                                       art.Precio = precio;
+                                                       await VerificarYHabilitarInterceptor();
+                                                   }
+                                                   StateHasChanged();
+                                               })"
+                                                 placeholder="0.00"
+                                                 style="width: 120px; text-align: right;" />
+                                        @if (articulosConFormatoInvalido.ContainsKey(art))
                                         {
-                                            <strong>$@art.Precio.ToString("F2")</strong>
+                                            <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                                                ⚠️ @articulosConFormatoInvalido[art]
+                                            </small>
                                         }
-                                    </td>
-                                    @if (modoEdicion)
-                                    {
-                                        <td style="text-align: center;">
-                                            <button class="m3-button m3-button-text" style="color: var(--md-sys-color-error);" @onclick="() => EliminarArticulo(art)">
-                                                Eliminar
-                                            </button>
-                                        </td>
+                                        else if (articulosConPrecioNegativo.Contains(art))
+                                        {
+                                            <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                                                ⚠️ El precio no puede ser negativo
+                                            </small>
+                                        }
                                     }
-                                </tr>
-                            }
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td><strong>TOTAL</strong></td>
-                                <td style="text-align: right;"><strong>$@factura.Total.ToString("F2")</strong></td>
+                                                        else
+                                    {
+                                        <strong>$@art.Precio.ToString("F2")</strong>
+                                    }
+                                </td>
                                 @if (modoEdicion)
                                 {
-                                    <td></td>
+                                    <td style="text-align: center;">
+                                        <button class="m3-button m3-button-text" style="color: var(--md-sys-color-error);" @onclick="() => EliminarArticulo(art)">
+                                            Eliminar
+                                        </button>
+                                    </td>
                                 }
                             </tr>
-                        </tfoot>
-                    </table>
-                </div>
-
-                @if (modoEdicion)
-                {
-                    <button class="m3-button m3-button-tonal" @onclick="AgregarArticulo" style="margin-top: 16px;">
-                        Agregar Artículo
-                    </button>
-                }
-            }
-            else
-            {
-                <p style="text-align: center; color: var(--md-sys-color-on-surface-variant); padding: 24px;">
-                    No hay artículos en esta factura.
-                </p>
-            }
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td><strong>TOTAL</strong></td>
+                            <td style="text-align: right;"><strong>$@factura.Total.ToString("F2")</strong></td>
+                            @if (modoEdicion)
+                            {
+                                <td></td>
+                            }
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
 
             @if (modoEdicion)
             {
-                <hr class="m3-divider" />
-                <div class="m3-button-group">
-                    <button class="m3-button m3-button-filled" @onclick="GuardarCambios">
-                        Guardar Cambios
-                    </button>
-                    <button class="m3-button m3-button-outlined" @onclick="CancelarEdicion">
-                        Cancelar
-                    </button>
-                </div>
+                <button class="m3-button m3-button-tonal" @onclick="AgregarArticulo" style="margin-top: 16px;">
+                    Agregar Artículo
+                </button>
             }
+        }
+                else
+        {
+            <p style="text-align: center; color: var(--md-sys-color-on-surface-variant); padding: 24px;">
+                No hay artículos en esta factura.
+            </p>
+        }
 
-            @if (!string.IsNullOrEmpty(mensaje))
-            {
-                <div class="@(mensaje.Contains("exitosamente") ? "m3-message m3-message-success" : "m3-message m3-message-error")">
-                    @mensaje
-                </div>
-            }
-        </div>
-    }
+        @if (modoEdicion)
+        {
+            <hr class="m3-divider" />
+            <div class="m3-button-group">
+                <button class="m3-button m3-button-filled" @onclick="GuardarCambios">
+                    Guardar Cambios
+                </button>
+                <button class="m3-button m3-button-outlined" @onclick="CancelarEdicion">
+                    Cancelar
+                </button>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(mensaje))
+        {
+            <div class="@(mensaje.Contains("exitosamente") ? "m3-message m3-message-success" : "m3-message m3-message-error")">
+                @mensaje
+            </div>
+        }
+    </div>
+        }
 </div>
 
 @code {
@@ -224,6 +301,15 @@
     private bool navegacionConfirmada = false;
     private bool accesoNoAutorizado = false;
     private bool cargando = true;
+
+    private bool mostrarErrorCliente = false;
+    private HashSet<Articulo> articulosConError = new();
+    private HashSet<Articulo> articulosConPrecioNegativo = new();
+    private Dictionary<Articulo, string> articulosConFormatoInvalido = new();
+    private Dictionary<Articulo, string> preciosTemporales = new();
+
+    private const int LONGITUD_MINIMA_CLIENTE = 3;
+    private const int LONGITUD_MINIMA_ARTICULO = 2;
 
     protected override async Task OnInitializedAsync()
     {
@@ -254,6 +340,11 @@
         GuardarEstadoOriginal();
         modoEdicion = true;
         mensaje = "";
+        mostrarErrorCliente = false;
+        articulosConError.Clear();
+        articulosConPrecioNegativo.Clear();
+        articulosConFormatoInvalido.Clear();
+        preciosTemporales.Clear();
         StateHasChanged();
     }
 
@@ -274,6 +365,38 @@
                     FacturaId = a.FacturaId
                 }).ToList()
             };
+        }
+    }
+
+    private void ValidarCliente()
+    {
+        if (factura == null) return;
+        var nombre = factura.NombreCliente ?? "";
+        mostrarErrorCliente = !string.IsNullOrWhiteSpace(nombre) && nombre.Trim().Length < LONGITUD_MINIMA_CLIENTE;
+    }
+
+    private void ValidarArticulo(Articulo art)
+    {
+        var nombre = art.Nombre ?? "";
+        if (!string.IsNullOrWhiteSpace(nombre) && nombre.Trim().Length < LONGITUD_MINIMA_ARTICULO)
+        {
+            articulosConError.Add(art);
+        }
+        else
+        {
+            articulosConError.Remove(art);
+        }
+    }
+
+    private void ValidarPrecio(Articulo art)
+    {
+        if (art.Precio < 0)
+        {
+            articulosConPrecioNegativo.Add(art);
+        }
+        else
+        {
+            articulosConPrecioNegativo.Remove(art);
         }
     }
 
@@ -323,6 +446,11 @@
     {
         modoEdicion = false;
         mensaje = "";
+        mostrarErrorCliente = false;
+        articulosConError.Clear();
+        articulosConPrecioNegativo.Clear();
+        articulosConFormatoInvalido.Clear();
+        preciosTemporales.Clear();
         await DeshabilitarInterceptorNavegacion();
         await CargarFactura();
         StateHasChanged();
@@ -332,18 +460,80 @@
     {
         mensaje = "";
 
-        if (string.IsNullOrWhiteSpace(factura.NombreCliente))
+       
+        if (articulosConFormatoInvalido.Any())
         {
-            mensaje = "Debe ingresar el nombre del cliente";
+            mensaje = "Hay artículos con formato de precio inválido. Solo se permiten números y punto decimal.";
+            StateHasChanged();
             return;
         }
 
-        var articulosValidos = factura.Articulos.Where(a =>
-            !string.IsNullOrWhiteSpace(a.Nombre) && a.Precio > 0).ToList();
+       
+        mostrarErrorCliente = false;
+        articulosConError.Clear();
+        articulosConPrecioNegativo.Clear();
+
+     
+        if (string.IsNullOrWhiteSpace(factura.NombreCliente))
+        {
+            mensaje = "Debe ingresar el nombre del cliente";
+            mostrarErrorCliente = true;
+            return;
+        }
+
+        if (factura.NombreCliente.Trim().Length < LONGITUD_MINIMA_CLIENTE)
+        {
+            mensaje = $"El nombre del cliente debe tener al menos {LONGITUD_MINIMA_CLIENTE} caracteres";
+            mostrarErrorCliente = true;
+            return;
+        }
+
+        
+        var articulosValidos = new List<Articulo>();
+        var hayErroresArticulos = false;
+        var hayPreciosNegativos = false;
+
+        foreach (var art in factura.Articulos)
+        {
+           
+            if (art.Precio < 0)
+            {
+                articulosConPrecioNegativo.Add(art);
+                hayPreciosNegativos = true;
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(art.Nombre))
+                continue;
+
+            if (art.Nombre.Trim().Length < LONGITUD_MINIMA_ARTICULO)
+            {
+                articulosConError.Add(art);
+                hayErroresArticulos = true;
+                continue;
+            }
+
+            if (art.Precio > 0)
+            {
+                articulosValidos.Add(art);
+            }
+        }
+
+        if (hayPreciosNegativos)
+        {
+            mensaje = "Los precios no pueden ser negativos";
+            return;
+        }
+
+        if (hayErroresArticulos)
+        {
+            mensaje = $"Los nombres de artículos deben tener al menos {LONGITUD_MINIMA_ARTICULO} caracteres";
+            return;
+        }
 
         if (!articulosValidos.Any())
         {
-            mensaje = "Debe haber al menos un artículo válido";
+            mensaje = "Debe haber al menos un artículo válido con nombre y precio";
             return;
         }
 
@@ -355,13 +545,13 @@
 
         if (facturaDb != null)
         {
-            facturaDb.NombreCliente = factura.NombreCliente;
+            facturaDb.NombreCliente = factura.NombreCliente.Trim();
             facturaDb.Fecha = factura.Fecha;
 
             DbContext.Articulos.RemoveRange(facturaDb.Articulos);
             facturaDb.Articulos = factura.Articulos.Select(a => new Articulo
             {
-                Nombre = a.Nombre,
+                Nombre = a.Nombre.Trim(),
                 Precio = a.Precio,
                 FacturaId = factura.Id
             }).ToList();
@@ -386,6 +576,10 @@
         if (factura!.Articulos.Count > 1)
         {
             factura.Articulos.Remove(art);
+            articulosConError.Remove(art);
+            articulosConPrecioNegativo.Remove(art);
+            articulosConFormatoInvalido.Remove(art);
+            preciosTemporales.Remove(art);
             _ = VerificarYHabilitarInterceptor();
         }
         else
