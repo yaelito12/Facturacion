@@ -18,6 +18,7 @@
         <button class="m3-button m3-button-outlined" @onclick="VolverInicio">← Volver al Inicio</button>
         <button class="m3-button m3-button-outlined" @onclick="IrAFacturas">📋 Ver Facturas</button>
         <button class="m3-button m3-button-outlined" @onclick="IrAReportes">📊 Ver Reportes</button>
+        <button class="m3-button m3-button-outlined" @onclick="IrArchivadas">📦 Facturas Archivadas</button>
     </div>
 
     <div class="m3-card m3-card-elevated">
@@ -369,5 +370,9 @@
     private void IrAReportes()
     {
         Navigation.NavigateTo("/reportes");
+    }
+    private void IrArchivadas()
+    {
+        Navigation.NavigateTo("/archivadas");
     }
 }

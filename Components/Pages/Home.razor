@@ -27,13 +27,19 @@
                    @bind:after="GuardarEnStorage"
                    @oninput="BuscarClientes"
                    list="listaClientes"
-                   placeholder="Escribe el nombre del cliente..." />
+                   placeholder="Escribe el nombre del cliente (mínimo 3 caracteres)..." />
             <datalist id="listaClientes">
                 @foreach (var cliente in clientesFiltrados)
                 {
                     <option value="@cliente" />
                 }
             </datalist>
+            @if (mostrarErrorCliente)
+            {
+                <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                    ⚠️ El nombre del cliente debe tener al menos 3 caracteres
+                </small>
+            }
         </div>
 
         <hr class="m3-divider" />
@@ -49,7 +55,7 @@
                     <div class="m3-text-field">
                         <label>Nombre:</label>
                         <input type="text"
-                               placeholder="Nombre del artículo"
+                               placeholder="Nombre del artículo (mínimo 2 caracteres)"
                                value="@art.Articulo.Nombre"
                                @oninput="@(e => BuscarArticulos(art.Articulo, e))"
                                list="listaArticulos_@art.Index" />
@@ -59,6 +65,12 @@
                                 <option value="@articulo.Nombre">$@articulo.Precio.ToString("F2")</option>
                             }
                         </datalist>
+                        @if (articulosConError.Contains(art.Articulo))
+                        {
+                            <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                                ⚠️ Mínimo 2 caracteres
+                            </small>
+                        }
                     </div>
 
                     <div class="m3-text-field">
@@ -114,6 +126,12 @@
     private List<ArticuloHistorico> todosLosArticulos = new();
     private List<ArticuloHistorico> articulosFiltrados = new();
 
+    private bool mostrarErrorCliente = false;
+    private HashSet<Articulo> articulosConError = new();
+
+    private const int LONGITUD_MINIMA_CLIENTE = 3;
+    private const int LONGITUD_MINIMA_ARTICULO = 2;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -153,6 +171,9 @@
         var busqueda = e.Value?.ToString() ?? "";
         nuevaFactura.NombreCliente = busqueda;
 
+        // Validar longitud
+        mostrarErrorCliente = !string.IsNullOrWhiteSpace(busqueda) && busqueda.Trim().Length < LONGITUD_MINIMA_CLIENTE;
+
         if (string.IsNullOrWhiteSpace(busqueda))
         {
             clientesFiltrados = todosLosClientes;
@@ -171,6 +192,16 @@
     {
         var busqueda = e.Value?.ToString() ?? "";
         articulo.Nombre = busqueda;
+
+        // Validar longitud
+        if (!string.IsNullOrWhiteSpace(busqueda) && busqueda.Trim().Length < LONGITUD_MINIMA_ARTICULO)
+        {
+            articulosConError.Add(articulo);
+        }
+        else
+        {
+            articulosConError.Remove(articulo);
+        }
 
         if (string.IsNullOrWhiteSpace(busqueda))
         {
@@ -266,6 +297,7 @@
         if (articulosTemp.Count > 1)
         {
             articulosTemp.Remove(art);
+            articulosConError.Remove(art);
             await GuardarEnStorage();
         }
         else
@@ -278,21 +310,58 @@
     {
         art.Nombre = "";
         art.Precio = 0;
+        articulosConError.Remove(art);
         await GuardarEnStorage();
     }
 
     private async Task GuardarFactura()
     {
         mensaje = "";
+        mostrarErrorCliente = false;
+        articulosConError.Clear();
 
+        // Validar nombre del cliente
         if (string.IsNullOrWhiteSpace(nuevaFactura.NombreCliente))
         {
             mensaje = "Debe ingresar el nombre del cliente";
+            mostrarErrorCliente = true;
             return;
         }
 
-        var articulosValidos = articulosTemp.Where(a =>
-            !string.IsNullOrWhiteSpace(a.Nombre) && a.Precio > 0).ToList();
+        if (nuevaFactura.NombreCliente.Trim().Length < LONGITUD_MINIMA_CLIENTE)
+        {
+            mensaje = $"El nombre del cliente debe tener al menos {LONGITUD_MINIMA_CLIENTE} caracteres";
+            mostrarErrorCliente = true;
+            return;
+        }
+
+        // Validar artículos
+        var articulosValidos = new List<Articulo>();
+        var hayErroresArticulos = false;
+
+        foreach (var art in articulosTemp)
+        {
+            if (string.IsNullOrWhiteSpace(art.Nombre))
+                continue;
+
+            if (art.Nombre.Trim().Length < LONGITUD_MINIMA_ARTICULO)
+            {
+                articulosConError.Add(art);
+                hayErroresArticulos = true;
+                continue;
+            }
+
+            if (art.Precio > 0)
+            {
+                articulosValidos.Add(art);
+            }
+        }
+
+        if (hayErroresArticulos)
+        {
+            mensaje = $"Los nombres de artículos deben tener al menos {LONGITUD_MINIMA_ARTICULO} caracteres";
+            return;
+        }
 
         if (!articulosValidos.Any())
         {
@@ -303,8 +372,12 @@
         var factura = new Factura
         {
             Fecha = nuevaFactura.Fecha,
-            NombreCliente = nuevaFactura.NombreCliente,
-            Articulos = articulosValidos,
+            NombreCliente = nuevaFactura.NombreCliente.Trim(),
+            Articulos = articulosValidos.Select(a => new Articulo
+            {
+                Nombre = a.Nombre.Trim(),
+                Precio = a.Precio
+            }).ToList(),
             Archivada = false
         };
 
@@ -317,6 +390,7 @@
 
         nuevaFactura = new() { Fecha = DateTime.Now };
         articulosTemp = new() { new Articulo() };
+        articulosConError.Clear();
     }
 
     private void IrAFacturas()

@@ -16,6 +16,7 @@
         <button class="m3-button m3-button-outlined" @onclick="IrAHome">← Volver a Nueva Factura</button>
         <button class="m3-button m3-button-outlined" @onclick="IrAFacturas">📋 Ver Facturas</button>
         <button class="m3-button m3-button-outlined" @onclick="IrAConsultas">🔍 Ver Consultas</button>
+        <button class="m3-button m3-button-outlined" @onclick="IrArchivadas">📦 Facturas Archivadas</button>
     </div>
 
     <div class="m3-card m3-card-elevated">
@@ -413,6 +414,10 @@
         Navigation.NavigateTo("/consultas");
     }
 
+    private void IrArchivadas()
+    {
+        Navigation.NavigateTo("/archivadas");
+    }
     public class ReporteMensual
     {
         public int NumeroMes { get; set; }

@@ -19,6 +19,7 @@
         <button class="m3-button m3-button-outlined" @onclick="IrAHome">← Volver a Nueva Factura</button>
         <button class="m3-button m3-button-outlined" @onclick="IrAReportes">📊 Ver Reportes</button>
         <button class="m3-button m3-button-outlined" @onclick="IrAConsultas">🔍 Ver Consultas</button>
+        <button class="m3-button m3-button-outlined" @onclick="IrArchivadas">📦 Facturas Archivadas</button>
     </div>
 
     @if (facturas == null)
@@ -175,6 +176,10 @@
     private void IrAConsultas()
     {
         Navigation.NavigateTo("/consultas");
+    }
+    private void IrArchivadas()
+    {
+        Navigation.NavigateTo("/archivadas");
     }
 
     private async Task BloquearBotonesNavegador()
