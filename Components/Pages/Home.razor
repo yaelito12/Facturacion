@@ -23,9 +23,16 @@
         <div class="m3-text-field">
             <label>👤 Nombre del Cliente:</label>
             <input type="text"
-                   @bind="nuevaFactura.NombreCliente"
-                   @bind:after="GuardarEnStorage"
+                   value="@nuevaFactura.NombreCliente"
                    @oninput="BuscarClientes"
+                   @onblur="@(() => {
+                                                             if (!string.IsNullOrWhiteSpace(nuevaFactura.NombreCliente) && string.IsNullOrEmpty(errorFormatoCliente))
+                   {
+                       nuevaFactura.NombreCliente = FormatearNombre(nuevaFactura.NombreCliente);
+                       GuardarEnStorage();
+                       StateHasChanged();
+                   }
+                                                         })"
                    list="listaClientes"
                    placeholder="Escribe el nombre del cliente (mínimo 3 caracteres)..." />
             <datalist id="listaClientes">
@@ -34,7 +41,13 @@
                     <option value="@cliente" />
                 }
             </datalist>
-            @if (mostrarErrorCliente)
+            @if (!string.IsNullOrEmpty(errorFormatoCliente))
+            {
+                <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                    ⚠️ @errorFormatoCliente
+                </small>
+            }
+            else if (mostrarErrorCliente)
             {
                 <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
                     ⚠️ El nombre del cliente debe tener al menos 3 caracteres
@@ -58,39 +71,111 @@
                                placeholder="Nombre del artículo (mínimo 2 caracteres)"
                                value="@art.Articulo.Nombre"
                                @oninput="@(e => BuscarArticulos(art.Articulo, e))"
-                               list="listaArticulos_@art.Index" />
-                        <datalist id="listaArticulos_@art.Index">
-                            @foreach (var articulo in articulosFiltrados)
-                            {
-                                <option value="@articulo.Nombre">$@articulo.Precio.ToString("F2")</option>
-                            }
-                        </datalist>
-                        @if (articulosConError.Contains(art.Articulo))
+                               @onblur="@(() => {
+                               if (!string.IsNullOrWhiteSpace(art.Articulo.Nombre) && !nombresArticulosConError.ContainsKey(art.Articulo))
+                               {
+                                   art.Articulo.Nombre = FormatearNombre(art.Articulo.Nombre);
+                                   GuardarEnStorage();
+                                   StateHasChanged();
+                               }
+                           })"
+                           list="listaArticulos_@art.Index" />
+                    <datalist id="listaArticulos_@art.Index">
+                        @foreach (var articulo in articulosFiltrados)
                         {
-                            <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
-                                ⚠️ Mínimo 2 caracteres
-                            </small>
+                            <option value="@articulo.Nombre">$@articulo.Precio.ToString("F2")</option>
                         }
-                    </div>
+                    </datalist>
+                    @if (nombresArticulosConError.ContainsKey(art.Articulo))
+                    {
+                        <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                            ⚠️ @nombresArticulosConError[art.Articulo]
+                        </small>
+                    }
+                    else if (articulosConError.Contains(art.Articulo))
+                    {
+                        <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                            ⚠️ Mínimo 2 caracteres
+                        </small>
+                    }
+                </div>
 
-                    <div class="m3-text-field">
-                        <label>💵 Precio:</label>
-                        <input type="number" step="0.01" min="0" placeholder="0.00" @bind="art.Articulo.Precio" @bind:after="ValidarPrecio" />
-                        @if (articulosConPrecioNegativo.Contains(art.Articulo))
-                        {
-                            <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
-                                ⚠️ El precio no puede ser negativo
-                            </small>
-                        }
-                    </div>
+                <div class="m3-text-field">
+                    <label>💵 Precio:</label>
+                    <input type="text"
+                           placeholder="0.00"
+                           value="@(preciosTemporales.ContainsKey(art.Articulo) ? preciosTemporales[art.Articulo] : art.Articulo.Precio.ToString("0.##"))"
+                           @oninput="@(async (e) => {
+                           var valor = e.Value?.ToString() ?? "";
 
-                    <div class="m3-button-group">
-                        <button class="m3-button m3-button-outlined" @onclick="@(() => LimpiarArticulo(art.Articulo))">🧹 Limpiar</button>
-                        <button class="m3-button m3-button-error" @onclick="@(() => EliminarArticulo(art.Articulo))">🗑️ Eliminar</button>
-                    </div>
+                        
+                           preciosTemporales[art.Articulo] = valor;
+
+                           // Verificar si contiene símbolos inválidos
+                           if (System.Text.RegularExpressions.Regex.IsMatch(valor, @"[^\d.]"))
+                           {
+                               articulosConFormatoInvalido[art.Articulo] = "Solo se permiten números y punto decimal";
+                               StateHasChanged();
+                               return;
+                           }
+
+                           // Verificar si hay más de un punto decimal
+                           if (valor.Count(c => c == '.') > 1)
+                           {
+                               articulosConFormatoInvalido[art.Articulo] = "Solo se permite un punto decimal";
+                               StateHasChanged();
+                               return;
+                           }
+
+                           // Limpiar error de formato inválido si existía
+                           articulosConFormatoInvalido.Remove(art.Articulo);
+
+                           if (string.IsNullOrWhiteSpace(valor))
+                           {
+                               art.Articulo.Precio = 0;
+                               articulosConPrecioNegativo.Remove(art.Articulo);
+                               await GuardarEnStorage();
+                               StateHasChanged();
+                               return;
+                           }
+
+                           if (decimal.TryParse(valor, System.Globalization.NumberStyles.AllowDecimalPoint,
+                               System.Globalization.CultureInfo.InvariantCulture, out var precio))
+                           {
+                               if (precio < 0)
+                               {
+                                   articulosConPrecioNegativo.Add(art.Articulo);
+                               }
+                               else
+                               {
+                                   articulosConPrecioNegativo.Remove(art.Articulo);
+                               }
+                               art.Articulo.Precio = precio;
+                               await GuardarEnStorage();
+                           }
+                           StateHasChanged();
+                                                                                     })" />
+                    @if (articulosConFormatoInvalido.ContainsKey(art.Articulo))
+                    {
+                        <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                            ⚠️ @articulosConFormatoInvalido[art.Articulo]
+                        </small>
+                    }
+                    else if (articulosConPrecioNegativo.Contains(art.Articulo))
+                    {
+                        <small style="color: var(--md-sys-color-error); display: block; margin-top: 4px;">
+                            ⚠️ El precio no puede ser negativo
+                        </small>
+                    }
+                </div>
+
+                <div class="m3-button-group">
+                    <button class="m3-button m3-button-outlined" @onclick="@(() => LimpiarArticulo(art.Articulo))">🧹 Limpiar</button>
+                    <button class="m3-button m3-button-error" @onclick="@(() => EliminarArticulo(art.Articulo))">🗑️ Eliminar</button>
                 </div>
             </div>
-        }
+        </div>
+                }
 
         <button class="m3-button m3-button-tonal" @onclick="AgregarArticulo">➕ Agregar Artículo</button>
 
@@ -135,9 +220,39 @@
     private bool mostrarErrorCliente = false;
     private HashSet<Articulo> articulosConError = new();
     private HashSet<Articulo> articulosConPrecioNegativo = new();
+    private Dictionary<Articulo, string> articulosConFormatoInvalido = new();
+    private Dictionary<Articulo, string> preciosTemporales = new();
+    private Dictionary<Articulo, string> nombresArticulosConError = new();
+    private string errorFormatoCliente = "";
 
     private const int LONGITUD_MINIMA_CLIENTE = 3;
     private const int LONGITUD_MINIMA_ARTICULO = 2;
+
+    private string FormatearNombre(string nombre)
+    {
+        if (string.IsNullOrWhiteSpace(nombre))
+            return "";
+
+      
+        nombre = System.Text.RegularExpressions.Regex.Replace(nombre, @"[^\p{L}\p{N}\s\-']", "");
+
+        nombre = System.Text.RegularExpressions.Regex.Replace(nombre, @"\s+", " ");
+
+        var palabras = nombre.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var palabrasFormateadas = palabras.Select(p =>
+        {
+            if (p.Length == 0) return p;
+            return char.ToUpper(p[0]) + p.Substring(1).ToLower();
+        });
+
+        return string.Join(" ", palabrasFormateadas).Trim();
+    }
+
+    private bool ValidarCaracteresNombre(string nombre)
+    {
+    
+        return !System.Text.RegularExpressions.Regex.IsMatch(nombre, @"[^\p{L}\p{N}\s\-']");
+    }
 
     private async Task ValidarPrecio()
     {
@@ -192,6 +307,15 @@
     private void BuscarClientes(ChangeEventArgs e)
     {
         var busqueda = e.Value?.ToString() ?? "";
+
+        if (!string.IsNullOrWhiteSpace(busqueda) && !ValidarCaracteresNombre(busqueda))
+        {
+            errorFormatoCliente = "No se permiten caracteres especiales como [], {}, <>";
+            StateHasChanged();
+            return;
+        }
+
+        errorFormatoCliente = "";
         nuevaFactura.NombreCliente = busqueda;
 
         // Validar longitud
@@ -214,6 +338,16 @@
     private void BuscarArticulos(Articulo articulo, ChangeEventArgs e)
     {
         var busqueda = e.Value?.ToString() ?? "";
+
+
+        if (!string.IsNullOrWhiteSpace(busqueda) && !ValidarCaracteresNombre(busqueda))
+        {
+            nombresArticulosConError[articulo] = "No se permiten caracteres especiales como [], {}, <>";
+            StateHasChanged();
+            return;
+        }
+
+        nombresArticulosConError.Remove(articulo);
         articulo.Nombre = busqueda;
 
         // Validar longitud
@@ -243,6 +377,7 @@
         if (coincidencia != null && articulo.Precio == 0)
         {
             articulo.Precio = coincidencia.Precio;
+            preciosTemporales[articulo] = coincidencia.Precio.ToString("0.##");
         }
 
         GuardarEnStorage();
@@ -322,6 +457,9 @@
             articulosTemp.Remove(art);
             articulosConError.Remove(art);
             articulosConPrecioNegativo.Remove(art);
+            articulosConFormatoInvalido.Remove(art);
+            preciosTemporales.Remove(art);
+            nombresArticulosConError.Remove(art);
             await GuardarEnStorage();
         }
         else
@@ -336,15 +474,58 @@
         art.Precio = 0;
         articulosConError.Remove(art);
         articulosConPrecioNegativo.Remove(art);
+        articulosConFormatoInvalido.Remove(art);
+        preciosTemporales.Remove(art);
+        nombresArticulosConError.Remove(art);
         await GuardarEnStorage();
     }
 
     private async Task GuardarFactura()
     {
         mensaje = "";
+
+        // PRIMERO: Verificar si hay errores de formato inválido en precios
+        if (articulosConFormatoInvalido.Any())
+        {
+            mensaje = "Hay artículos con formato de precio inválido. Solo se permiten números y punto decimal.";
+            StateHasChanged();
+            return;
+        }
+
+        // Verificar si hay errores de formato en nombres de artículos
+        if (nombresArticulosConError.Any())
+        {
+            mensaje = "Hay nombres de artículos con caracteres no permitidos.";
+            StateHasChanged();
+            return;
+        }
+
+        // Verificar si hay error de formato en nombre de cliente
+        if (!string.IsNullOrEmpty(errorFormatoCliente))
+        {
+            mensaje = "El nombre del cliente contiene caracteres no permitidos.";
+            StateHasChanged();
+            return;
+        }
+
+        // Ahora sí limpiamos los errores para re-validar
         mostrarErrorCliente = false;
         articulosConError.Clear();
         articulosConPrecioNegativo.Clear();
+
+        // Validar que no haya caracteres inválidos en el cliente antes de formatear
+        if (!string.IsNullOrWhiteSpace(nuevaFactura.NombreCliente))
+        {
+            if (!ValidarCaracteresNombre(nuevaFactura.NombreCliente))
+            {
+                mensaje = "El nombre del cliente contiene caracteres no permitidos.";
+                errorFormatoCliente = "No se permiten caracteres especiales como [], {}, <>";
+                StateHasChanged();
+                return;
+            }
+            // Solo formatear si no hay errores
+            nuevaFactura.NombreCliente = FormatearNombre(nuevaFactura.NombreCliente);
+        }
 
         // Validar nombre del cliente
         if (string.IsNullOrWhiteSpace(nuevaFactura.NombreCliente))
@@ -368,6 +549,20 @@
 
         foreach (var art in articulosTemp)
         {
+            // Validar que no haya caracteres inválidos en el artículo antes de formatear
+            if (!string.IsNullOrWhiteSpace(art.Nombre))
+            {
+                if (!ValidarCaracteresNombre(art.Nombre))
+                {
+                    mensaje = "Hay nombres de artículos con caracteres no permitidos.";
+                    nombresArticulosConError[art] = "No se permiten caracteres especiales como [], {}, <>";
+                    StateHasChanged();
+                    return;
+                }
+                // Solo formatear si no hay errores
+                art.Nombre = FormatearNombre(art.Nombre);
+            }
+
             // Validar precio negativo
             if (art.Precio < 0)
             {
@@ -433,6 +628,10 @@
         articulosTemp = new() { new Articulo() };
         articulosConError.Clear();
         articulosConPrecioNegativo.Clear();
+        articulosConFormatoInvalido.Clear();
+        preciosTemporales.Clear();
+        nombresArticulosConError.Clear();
+        errorFormatoCliente = "";
     }
 
     private void IrAFacturas()
